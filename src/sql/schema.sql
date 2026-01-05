@@ -14,6 +14,5 @@ CREATE TABLE ingredient (
     name VARCHAR(250),
     price NUMERIC(10,2),
     category categories,
-    id_dish int REFERENCES ingredient(id)
+    id_dish int REFERENCES dish(id)
     );
-

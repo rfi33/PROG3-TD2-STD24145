@@ -9,19 +9,15 @@ public class DBConnection {
 
     private static final Dotenv dotenv = Dotenv.load();
 
-    private static final String JDBC_URL = dotenv.get("DB_URL");
-    private static final String USER = dotenv.get("DB_USER");
-    private static final String PASSWORD = dotenv.get("DB_PASSWORD");
+    private String URL= dotenv.get("DB_URL");
+    private String USER = dotenv.get("DB_USER");
+    private String PASSWORD = dotenv.get("DB_PASSWORD");
 
-    public static Connection getDBConnection() throws SQLException {
-        return DriverManager.getConnection(JDBC_URL, USER, PASSWORD);
-    }
-
-    public static void main(String[] args) {
-        try (Connection connection = getDBConnection()) {
-            System.out.println("Connection successful");
+    public Connection getDBConnection() {
+        try {
+            return DriverManager.getConnection(URL, USER, PASSWORD);
         } catch (SQLException e) {
-            e.printStackTrace();
+            throw new RuntimeException("Error connection");
         }
     }
 }

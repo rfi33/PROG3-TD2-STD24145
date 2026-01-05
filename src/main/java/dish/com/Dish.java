@@ -10,15 +10,18 @@ public class Dish {
     private List<Ingredient> ingredients;
 
 
-    enum DishType{
+    enum DishType {
         START,
         MAIN,
         DESSERT
-    }
+    };
 
-    private Double getDishPrice(){
-    return null;
-    }
+        private Double getDishPrice() {
+            return ingredients
+                    .stream()
+                    .mapToDouble(Ingredient::getPrice)
+                    .sum();
+        }
 
     public void setId(int id) {
         this.id = id;
@@ -58,7 +61,7 @@ public class Dish {
                 '}';
     }
 
-    public Dish(int id, String name, DishType dishType, List<Ingredient> ingredients) {
+    public Dish() {
         this.id = id;
         this.name = name;
         this.dishType = dishType;

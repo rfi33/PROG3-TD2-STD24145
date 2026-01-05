@@ -1,5 +1,6 @@
 package dish.com;
 
+import java.util.List;
 import java.util.Objects;
 
 public class Ingredient {
@@ -17,7 +18,11 @@ public class Ingredient {
     OTHER
     }
     private String getDishName(){
-        return name;
+        return List.of(dish)
+                .stream()
+                .filter(Objects::nonNull)
+                .map(Dish::getName)
+                .findFirst().orElse(null);
     }
 
     @Override
@@ -43,7 +48,7 @@ public class Ingredient {
                 '}';
     }
 
-    public Ingredient(int id, Dish dish, CategoryEnum category, Double price, String name) {
+    public Ingredient() {
         this.id = id;
         this.dish = dish;
         this.category = category;
