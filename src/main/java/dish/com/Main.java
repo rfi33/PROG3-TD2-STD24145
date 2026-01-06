@@ -10,16 +10,23 @@ public class Main {
         DataRetriever dataRetriever = new DataRetriever();
         testFindId(dataRetriever);
         testFindIngredient(dataRetriever);
-        testCreate(dataRetriever);
+        test(dataRetriever);
     }
 
     public static void testFindId(DataRetriever dataRetriever){
-        Dish dish = dataRetriever.findDishById(1);
-        System.out.println("Voici l'id : " + dish.getId() + " " + dish.getName() + " " + dish.getDishType());
+        Dish dish = dataRetriever.findDishById(1);{
+            System.out.println("Les ingrédients du " + dish.getName()+":");
+            for (Ingredient ingredient : dish.getIngredients()) {
+                System.out.println("- " + ingredient.getName());
+        }
 
-        System.out.println("Ingrédients :");
-        for (Ingredient ingredient : dish.getIngredients()) {
-            System.out.println("- " + ingredient.getName());
+            Dish dish1 = dataRetriever.findDishById(999);{
+                System.out.println("Les ingrédients du " + dish1.getName()+":");
+                for (Ingredient ingredient1 : dish1.getIngredients()) {
+                    System.out.println("- " + ingredient1.getName());
+                }
+            }
+
         }
     }
     public static  void testFindIngredient(DataRetriever dataRetriever){
@@ -30,19 +37,7 @@ public class Main {
             System.out.println(ingredient1.getName());
         }
     }
-    public static void testCreate(DataRetriever dataRetriever) {
-        Ingredient ingredient = new Ingredient();
-        ingredient.setName("Sucre");
+    public static void test(DataRetriever dataRetriever){
 
-        List<Ingredient> ingredients = new ArrayList<>();
-        ingredients.add(ingredient);
-
-        List<Ingredient> result =
-                dataRetriever.createIngredients(ingredients);
-
-        System.out.println("Ingrédients créés :");
-        for (Ingredient i : result) {
-            System.out.println(i.getName());
-        }
     }
 }

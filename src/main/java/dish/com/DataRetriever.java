@@ -18,12 +18,13 @@ public class DataRetriever {
     }
 
 
-    public Dish findDishById(Integer id) {
+    public Dish findDishById(Integer id) throws RuntimeException {
 
+            Dish dish = null;
+            List<Ingredient> ingredients= new ArrayList<>();
         String sql = "SELECT dish.id,dish.name,dish.dish_type,ingredient.name as igName FROM ingredient " +
                 "INNER JOIN dish ON ingredient.id_dish = dish.id " +
                 "WHERE dish.id = ?";
-
 
 
         try (Connection connection = dbConnection.getDBConnection();
@@ -32,8 +33,6 @@ public class DataRetriever {
             ps.setInt(1, id);
 
             try (ResultSet rs = ps.executeQuery()) {
-
-                List<Ingredient> ingredients = new ArrayList<>();
 
                 while (rs.next()) {
 
@@ -57,6 +56,11 @@ public class DataRetriever {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+        if (dish == null) {
+            throw new RuntimeException("Dish not found");
+        }
+
+        dish.setIngredients(ingredients);
         return dish;
     }
 
@@ -185,27 +189,26 @@ return ingredients;
             throw new RuntimeException("Erreur lors de la sauvegarde du plat");
         }
     }
-    public List<Dish> findDishsByIngredientName(String ingredientName) {
+    public List<Dish> findDishByIngredientName(String ingredientName) {
 
         List<Dish> dishes = new ArrayList<>();
 
         String sql =
-                "SELECT DISTINCT d.id AS dish_id, d.name AS dish_name, d.price " +
-                        "FROM dish d " +
-                        "JOIN dish_ingredient di ON d.id = di.dish_id " +
-                        "JOIN ingredient i ON i.id = di.ingredient_id " +
-                        "WHERE LOWER(i.name) LIKE LOWER(?)";
+                "SELECT DISTINCT dish.id, dish.name,ingredient.id,ingredient.name " +
+                        "FROM ingredient " +
+                        "JOIN dish ON ingredient.id_dish = dish.id " +
+                        "WHERE LOWER(ingredient.name) LIKE LOWER(?)";
 
         try (Connection connection = dbConnection.getDBConnection();
              PreparedStatement ps = connection.prepareStatement(sql)) {
 
-            ps.setString(1, "%" + ingredientName + "%");
+            ps.setString(1,"%"+ingredientName+"%" );
 
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     Dish dish = new Dish();
-                    dish.setId(rs.getInt("dish_id"));
-                    dish.setName(rs.getString("dish_name"));
+                    dish.setId(rs.getInt("id"));
+                    dish.setName(rs.getString("name"));
 
                     dishes.add(dish);
                 }
@@ -215,9 +218,9 @@ return ingredients;
             e.printStackTrace();
             throw new RuntimeException("Erreur lors de la recherche des plats par ingrédient");
         }
-
         return dishes;
     }
+
     public List<Ingredient> findIngredientsByCriteria(
             String ingredientName,
             Ingredient.CategoryEnum category,
@@ -229,29 +232,28 @@ return ingredients;
         List<Object> parameters = new ArrayList<>();
 
         StringBuilder sql = new StringBuilder(
-                "SELECT DISTINCT i.id, i.name, i.category " +
-                        "FROM ingredient i " +
-                        "LEFT JOIN dish_ingredient di ON i.id = di.ingredient_id " +
-                        "LEFT JOIN dish d ON d.id = di.dish_id " +
+                "SELECT DISTINCT ingredient.id, ingredient.name, ingredient.category " +
+                        "FROM ingredient " +
+                        "INNER JOIN dish ON ingredient.id_dish = dish.id " +
                         "WHERE 1=1 "
         );
 
         if (ingredientName != null && !ingredientName.isBlank()) {
-            sql.append("AND LOWER(i.name) LIKE LOWER(?) ");
+            sql.append("AND LOWER(ingredient.name) LIKE LOWER(?) ");
             parameters.add("%" + ingredientName + "%");
         }
         if (category != null) {
-            sql.append("AND i.category = ? ");
+            sql.append("AND ingredient.category = CAST(? AS categories) ");
             parameters.add(category.name());
         }
-
         if (dishName != null && !dishName.isBlank()) {
-            sql.append("AND LOWER(d.name) LIKE LOWER(?) ");
+            sql.append("AND LOWER(dish.name) LIKE LOWER(?) ");
             parameters.add("%" + dishName + "%");
         }
+
         sql.append("LIMIT ? OFFSET ? ");
         parameters.add(size);
-        parameters.add(page * size);
+        parameters.add((page - 1) * size);
 
         try (Connection connection = dbConnection.getDBConnection();
              PreparedStatement ps = connection.prepareStatement(sql.toString())) {
@@ -275,11 +277,9 @@ return ingredients;
 
         } catch (Exception e) {
             e.printStackTrace();
-            throw new RuntimeException("Erreur lors de la recherche des ingrédients");
+            throw new RuntimeException("Erreur lors de la recherche des ingrédients", e);
         }
 
         return ingredients;
     }
-
-
 }
