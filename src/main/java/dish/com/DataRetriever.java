@@ -132,13 +132,14 @@ return ingredients;
             throw new RuntimeException(e);
         }
     }
+
     public Dish saveDish(Dish dishToSave) {
 
         String insertDishSql =
-                "INSERT INTO dish(name, price) VALUES (?, ?)";
+                "INSERT INTO dish(name, dish_type) VALUES (?, ?::types)";
 
         String updateDishSql =
-                "UPDATE dish SET name = ?, price = ? WHERE id = ?";
+                "UPDATE dish SET name = ?, dish_type = ?::types WHERE id = ?";
 
         String deleteIngredientsSql =
                 "DELETE FROM dish_ingredient WHERE dish_id = ?";
@@ -149,46 +150,61 @@ return ingredients;
         try (Connection connection = dbConnection.getDBConnection()) {
 
             connection.setAutoCommit(false);
-            if (dishToSave == null) {
-                try (PreparedStatement ps = connection.prepareStatement(
-                        insertDishSql, PreparedStatement.RETURN_GENERATED_KEYS)) {
 
-                    ps.setString(1, dishToSave.getName());
-                    ps.executeUpdate();
+            try {
+                if (dishToSave.getId() == 0) {
+                    try (PreparedStatement ps = connection.prepareStatement(
+                            insertDishSql, PreparedStatement.RETURN_GENERATED_KEYS)) {
 
-                    ResultSet rs = ps.getGeneratedKeys();
-                    if (rs.next()) {
-                        dishToSave.setId(rs.getInt(1));
+                        ps.setString(1, dishToSave.getName());
+                        ps.setString(2, dishToSave.getDishType().name());
+                        ps.executeUpdate();
+
+                        ResultSet rs = ps.getGeneratedKeys();
+                        if (rs.next()) {
+                            dishToSave.setId(rs.getInt(1));
+                        }
                     }
                 }
-            } else {
-                try (PreparedStatement ps = connection.prepareStatement(updateDishSql)) {
-                    ps.setString(1, dishToSave.getName());
-                    ps.setInt(3, dishToSave.getId());
-                    ps.executeUpdate();
-                }
-            }
-            try (PreparedStatement ps = connection.prepareStatement(deleteIngredientsSql)) {
-                ps.setInt(1, dishToSave.getId());
-                ps.executeUpdate();
-            }
-            try (PreparedStatement ps = connection.prepareStatement(insertIngredientSql)) {
-                for (Ingredient ingredient : dishToSave.getIngredients()) {
-                    ps.setInt(1, dishToSave.getId());
-                    ps.setInt(2, ingredient.getId());
-                    ps.addBatch();
-                }
-                ps.executeBatch();
-            }
+                else {
+                    try (PreparedStatement ps = connection.prepareStatement(updateDishSql)) {
+                        ps.setString(1, dishToSave.getName());
+                        ps.setString(2, dishToSave.getDishType().name());
+                        ps.setInt(3, dishToSave.getId());
+                        ps.executeUpdate();
+                    }
 
-            connection.commit();
-            return dishToSave;
+                    try (PreparedStatement ps = connection.prepareStatement(deleteIngredientsSql)) {
+                        ps.setInt(1, dishToSave.getId());
+                        ps.executeUpdate();
+                    }
+                }
+
+                // Ajouter les ingrédients (pour CREATE et UPDATE)
+                if (dishToSave.getIngredients() != null && !dishToSave.getIngredients().isEmpty()) {
+                    try (PreparedStatement ps = connection.prepareStatement(insertIngredientSql)) {
+                        for (Ingredient ingredient : dishToSave.getIngredients()) {
+                            ps.setInt(1, dishToSave.getId());
+                            ps.setInt(2, ingredient.getId());
+                            ps.addBatch();
+                        }
+                        ps.executeBatch();
+                    }
+                }
+
+                connection.commit();
+                return dishToSave;
+
+            } catch (Exception e) {
+                connection.rollback();
+                throw new RuntimeException("Transaction annulée", e);
+            }
 
         } catch (Exception e) {
-            e.printStackTrace();
-            throw new RuntimeException("Erreur lors de la sauvegarde du plat");
+            throw new RuntimeException(e);
         }
     }
+
     public List<Dish> findDishByIngredientName(String ingredientName) {
 
         List<Dish> dishes = new ArrayList<>();
