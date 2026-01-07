@@ -2,6 +2,7 @@ package dish.com;
 
 import org.junit.jupiter.api.Test;
 
+import java.sql.SQLException;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -57,7 +58,7 @@ class DataRetrieverTest {
     }
 
     @Test
-    void findIngredientsByCriteria() {
+    void findIngredientsByCriteria() throws SQLException {
         List<Ingredient> ingredients = dataRetriever.findIngredientsByCriteria(
                 null,
                 Ingredient.CategoryEnum.VEGETABLE,
@@ -71,7 +72,6 @@ class DataRetrieverTest {
         assertEquals("Laitue", ingredients.get(0).getName());
         assertEquals("Tomate", ingredients.get(1).getName());
 
-        // Pour le second test, changez aussi page=1 en page=0
         List<Ingredient> ingredients1 = dataRetriever.findIngredientsByCriteria(
                 "cho",
                 null,

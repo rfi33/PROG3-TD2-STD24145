@@ -53,6 +53,7 @@ public class DataRetriever {
                     dish.setIngredients(ingredients);
                 }
             }
+            dbConnection.getDBConnection().close();
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -85,7 +86,7 @@ public class DataRetriever {
                 ingredient.setName(resultSet.getString("name"));
                 ingredients.add(ingredient);
             }
-
+            dbConnection.getDBConnection().close();
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -120,6 +121,7 @@ return ingredients;
                     insertStmt.setString(1, ingredient.getName());
                     insertStmt.executeUpdate();
                 }
+                dbConnection.getDBConnection().close();
                 connection.commit();
                 return newIngredients;
 
@@ -180,7 +182,6 @@ return ingredients;
                     }
                 }
 
-                // Ajouter les ingrédients (pour CREATE et UPDATE)
                 if (dishToSave.getIngredients() != null && !dishToSave.getIngredients().isEmpty()) {
                     try (PreparedStatement ps = connection.prepareStatement(insertIngredientSql)) {
                         for (Ingredient ingredient : dishToSave.getIngredients()) {
@@ -191,7 +192,7 @@ return ingredients;
                         ps.executeBatch();
                     }
                 }
-
+                dbConnection.getDBConnection().close();
                 connection.commit();
                 return dishToSave;
 
@@ -229,7 +230,7 @@ return ingredients;
                     dishes.add(dish);
                 }
             }
-
+            dbConnection.getDBConnection().close();
         } catch (Exception e) {
             e.printStackTrace();
             throw new RuntimeException("Erreur lors de la recherche des plats par ingrédient");
@@ -242,7 +243,7 @@ return ingredients;
             Ingredient.CategoryEnum category,
             String dishName,
             int page,
-            int size) {
+            int size) throws SQLException {
 
         List<Ingredient> ingredients = new ArrayList<>();
         List<Object> parameters = new ArrayList<>();
@@ -290,12 +291,11 @@ return ingredients;
                     ingredients.add(ingredient);
                 }
             }
-
+            dbConnection.getDBConnection().close();
         } catch (Exception e) {
             e.printStackTrace();
             throw new RuntimeException("Erreur lors de la recherche des ingrédients", e);
         }
-
         return ingredients;
     }
 }
