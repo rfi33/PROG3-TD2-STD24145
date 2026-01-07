@@ -138,10 +138,10 @@ return ingredients;
     public Dish saveDish(Dish dishToSave) {
 
         String insertDishSql =
-                "INSERT INTO dish(name, dish_type) VALUES (?, ?::types)";
+                "INSERT INTO dish(name, dish_type, price) VALUES (?, ?::types, ?)";
 
         String updateDishSql =
-                "UPDATE dish SET name = ?, dish_type = ?::types WHERE id = ?";
+                "UPDATE dish SET name = ?, dish_type = ?::types, price = ? WHERE id = ?";
 
         String deleteIngredientsSql =
                 "DELETE FROM dish_ingredient WHERE dish_id = ?";
@@ -160,6 +160,14 @@ return ingredients;
 
                         ps.setString(1, dishToSave.getName());
                         ps.setString(2, dishToSave.getDishType().name());
+
+                        // 🆕 Gestion du prix (nullable)
+                        if (dishToSave.getPrice() != null) {
+                            ps.setDouble(3, dishToSave.getPrice());
+                        } else {
+                            ps.setNull(3, java.sql.Types.DOUBLE);
+                        }
+
                         ps.executeUpdate();
 
                         ResultSet rs = ps.getGeneratedKeys();
@@ -172,7 +180,14 @@ return ingredients;
                     try (PreparedStatement ps = connection.prepareStatement(updateDishSql)) {
                         ps.setString(1, dishToSave.getName());
                         ps.setString(2, dishToSave.getDishType().name());
-                        ps.setInt(3, dishToSave.getId());
+
+                        if (dishToSave.getPrice() != null) {
+                            ps.setDouble(3, dishToSave.getPrice());
+                        } else {
+                            ps.setNull(3, java.sql.Types.DOUBLE);
+                        }
+
+                        ps.setInt(4, dishToSave.getId());
                         ps.executeUpdate();
                     }
 
@@ -192,7 +207,7 @@ return ingredients;
                         ps.executeBatch();
                     }
                 }
-                dbConnection.getDBConnection().close();
+
                 connection.commit();
                 return dishToSave;
 
@@ -205,6 +220,7 @@ return ingredients;
             throw new RuntimeException(e);
         }
     }
+
 
     public List<Dish> findDishByIngredientName(String ingredientName) {
 

@@ -8,7 +8,7 @@ public class Dish {
     private String name;
     private DishType dishType;
     private List<Ingredient> ingredients;
-
+    private Double price;
 
     enum DishType {
         START,
@@ -16,12 +16,22 @@ public class Dish {
         DESSERT
     };
 
-        private Double getDishPrice() {
+        private Double getDishCost() {
             return ingredients
                     .stream()
                     .mapToDouble(Ingredient::getPrice)
                     .sum();
         }
+
+    public Double getGrossMargin() {
+        if (price == null || price == 0) {
+            throw new IllegalStateException(
+                    "Le prix de vente n'ayant pas encore de valeur, il est impossible de calculer la marge brute"
+            );
+        }
+
+        return price - getDishCost();
+    }
 
     public void setId(int id) {
         this.id = id;
@@ -39,16 +49,35 @@ public class Dish {
         this.name = name;
     }
 
+    public Dish() {
+        this.id = id;
+        this.name = name;
+        this.dishType = dishType;
+        this.ingredients = ingredients;
+    }
+
+    public Dish(Double price) {
+        this.price = price;
+    }
+
+    public Double getPrice() {
+        return price;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;
         Dish dish = (Dish) o;
-        return id == dish.id && Objects.equals(name, dish.name) && dishType == dish.dishType && Objects.equals(ingredients, dish.ingredients);
+        return id == dish.id && Objects.equals(name, dish.name) && dishType == dish.dishType && Objects.equals(ingredients, dish.ingredients) && Objects.equals(price, dish.price);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, name, dishType, ingredients);
+        return Objects.hash(id, name, dishType, ingredients, price);
+    }
+
+    public void setPrice(Double price) {
+        this.price = price;
     }
 
     @Override
@@ -58,14 +87,8 @@ public class Dish {
                 ", name='" + name + '\'' +
                 ", dishType=" + dishType +
                 ", ingredients=" + ingredients +
+                ", price=" + price +
                 '}';
-    }
-
-    public Dish() {
-        this.id = id;
-        this.name = name;
-        this.dishType = dishType;
-        this.ingredients = ingredients;
     }
 
     public DishType getDishType() {
