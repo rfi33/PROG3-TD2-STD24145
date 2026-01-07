@@ -1,5 +1,6 @@
 package dish.com;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -7,7 +8,7 @@ public class Dish {
     private int id;
     private String name;
     private DishType dishType;
-    private List<Ingredient> ingredients;
+    private List<Ingredient> ingredients = new ArrayList<>();
     private Double price;
 
     enum DishType {
