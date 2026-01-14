@@ -5,24 +5,33 @@ import java.util.List;
 
 public class Main {
 
-    public static void main(String[] args) throws SQLException {
-        DataRetriever dataRetriever = new DataRetriever();
+    private final DataRetriever dataRetriever;
 
-        testFindId(dataRetriever);
-
-
-        testFindIngredient(dataRetriever);
-
-        testSaveDish(dataRetriever);
+    public Main() {
+        this.dataRetriever = new DataRetriever();
     }
 
-    public static void testFindId(DataRetriever dataRetriever) {
+    public static void main(String[] args) {
+        Main app = new Main();
+
+        try {
+            app.testFindId();
+            app.testFindIngredient();
+            app.testSaveDish();
+        } catch (SQLException e) {
+            System.err.println("Erreur SQL : " + e.getMessage());
+        }
+    }
+
+    public void testFindId() {
         Dish dish = dataRetriever.findDishById(1);
+
         if (dish != null) {
-            System.out.println("Les ingrédients du plat '" + dish.getName() + "':");
+            System.out.println("Les ingrédients du plat '" + dish.getName() + "' :");
             for (Ingredient ingredient : dish.getIngredients()) {
                 System.out.println("- " + ingredient.getName());
             }
+
             try {
                 Double margin = dish.getGrossMargin();
                 System.out.println("Marge brute : " + margin);
@@ -33,7 +42,7 @@ public class Main {
 
         Dish dish2 = dataRetriever.findDishById(999);
         if (dish2 != null && dish2.getIngredients() != null) {
-            System.out.println("Les ingrédients du plat '" + dish2.getName() + "':");
+            System.out.println("Les ingrédients du plat '" + dish2.getName() + "' :");
             for (Ingredient ingredient : dish2.getIngredients()) {
                 System.out.println("- " + ingredient.getName());
             }
@@ -42,15 +51,16 @@ public class Main {
         }
     }
 
-    public static void testFindIngredient(DataRetriever dataRetriever) {
+    public void testFindIngredient() {
         List<Ingredient> ingredients = dataRetriever.findIngredient(2, 2);
+
         System.out.println("Résultat de findIngredient :");
         for (Ingredient ingredient : ingredients) {
             System.out.println("- " + ingredient.getName());
         }
     }
 
-    public static void testSaveDish(DataRetriever dataRetriever) throws SQLException {
+    public void testSaveDish() throws SQLException {
         Dish newDish = new Dish();
         newDish.setName("Salade exotique");
         newDish.setPrice(3000.0);
@@ -66,14 +76,14 @@ public class Main {
         System.out.println("Plat sauvegardé : " + savedDish);
 
         try {
-            System.out.println("Marge brute apres save : " + savedDish.getGrossMargin());
+            System.out.println("Marge brute après save : " + savedDish.getGrossMargin());
         } catch (IllegalStateException e) {
             System.out.println("Exception getGrossMargin : " + e.getMessage());
         }
 
         savedDish.setPrice(3500.0);
         Dish updatedDish = dataRetriever.saveDish(savedDish);
-        System.out.println("Plat mis a jour : " + updatedDish);
+        System.out.println("Plat mis à jour : " + updatedDish);
         System.out.println("Marge brute après mise à jour : " + updatedDish.getGrossMargin());
     }
 }

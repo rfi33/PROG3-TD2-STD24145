@@ -1,10 +1,7 @@
 package dish.com;
 
 import javax.xml.transform.Result;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -115,12 +112,16 @@ return ingredients;
     }
 
     public Dish saveDish(Dish dishToSave) {
+        if (dishToSave == null) {
+            throw new IllegalArgumentException("Le plat ne peut pas être null");
+        }
+
         if (dishToSave.getDishType() == null) {
             throw new IllegalArgumentException("Le type du plat doit être défini avant la sauvegarde");
         }
 
         String insertDishSql =
-                "INSERT INTO dish(name, dish_type, price) VALUES (?, ?::types, ?)";
+                "INSERT INTO dish (name, dish_type, price) VALUES (?, ?::types, ?)";
         String updateDishSql =
                 "UPDATE dish SET name = ?, dish_type = ?::types, price = ? WHERE id = ?";
         String updateIngredientSql =
@@ -130,17 +131,20 @@ return ingredients;
             connection.setAutoCommit(false);
 
             try {
-                if (dishToSave.getId() <= 0) {
+                if ((dishToSave.getId() <= 0)) {
+
                     try (PreparedStatement ps = connection.prepareStatement(
-                            insertDishSql, PreparedStatement.RETURN_GENERATED_KEYS)) {
+                            insertDishSql, Statement.RETURN_GENERATED_KEYS)) {
 
                         ps.setString(1, dishToSave.getName());
                         ps.setString(2, dishToSave.getDishType().name());
-                        if (dishToSave.getPrice() != null) {
+
+                        if (dishToSave.getPrice() != 0) {
                             ps.setDouble(3, dishToSave.getPrice());
                         } else {
-                            ps.setNull(3, java.sql.Types.DOUBLE);
+                            ps.setNull(3, Types.DOUBLE);
                         }
+
                         ps.executeUpdate();
 
                         try (ResultSet rs = ps.getGeneratedKeys()) {
@@ -149,15 +153,18 @@ return ingredients;
                             }
                         }
                     }
+
                 } else {
                     try (PreparedStatement ps = connection.prepareStatement(updateDishSql)) {
                         ps.setString(1, dishToSave.getName());
                         ps.setString(2, dishToSave.getDishType().name());
-                        if (dishToSave.getPrice() != null) {
+
+                        if (dishToSave.getPrice() != 0) {
                             ps.setDouble(3, dishToSave.getPrice());
                         } else {
-                            ps.setNull(3, java.sql.Types.DOUBLE);
+                            ps.setNull(3, Types.DOUBLE);
                         }
+
                         ps.setInt(4, dishToSave.getId());
                         ps.executeUpdate();
                     }
@@ -179,47 +186,44 @@ return ingredients;
 
             } catch (Exception e) {
                 connection.rollback();
-                throw new RuntimeException("Transaction annulée", e);
+                throw new RuntimeException("Transaction annulée lors de la sauvegarde du plat", e);
             }
 
         } catch (SQLException e) {
-            throw new RuntimeException("Erreur lors de la sauvegarde du plat", e);
+            throw new RuntimeException("Erreur SQL lors de la sauvegarde du plat", e);
         }
     }
 
-
-
     public List<Dish> findDishByIngredientName(String ingredientName) {
-
         List<Dish> dishes = new ArrayList<>();
 
         String sql =
-                "SELECT DISTINCT dish.id, dish.name,ingredient.id,ingredient.name " +
-                        "FROM ingredient " +
-                        "JOIN dish ON ingredient.id_dish = dish.id " +
-                        "WHERE LOWER(ingredient.name) LIKE LOWER(?)";
+                "SELECT DISTINCT d.id AS dish_id, d.name AS dish_name " +
+                        "FROM ingredient i " +
+                        "JOIN dish d ON i.id_dish = d.id " +
+                        "WHERE LOWER(i.name) LIKE LOWER(?)";
 
         try (Connection connection = dbConnection.getDBConnection();
              PreparedStatement ps = connection.prepareStatement(sql)) {
 
-            ps.setString(1,"%"+ingredientName+"%" );
+            ps.setString(1, "%" + ingredientName + "%");
 
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     Dish dish = new Dish();
-                    dish.setId(rs.getInt("id"));
-                    dish.setName(rs.getString("name"));
-
+                    dish.setId(rs.getInt("dish_id"));
+                    dish.setName(rs.getString("dish_name"));
                     dishes.add(dish);
                 }
             }
-            dbConnection.getDBConnection().close();
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw new RuntimeException("Erreur lors de la recherche des plats par ingrédient");
+
+        } catch (SQLException e) {
+            throw new RuntimeException("Erreur lors de la recherche des plats par ingrédient", e);
         }
+
         return dishes;
     }
+
 
     public List<Ingredient> findIngredientsByCriteria(
             String ingredientName,

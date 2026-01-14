@@ -16,7 +16,7 @@ class DataRetrieverTest {
         Dish dish = dataRetriever.findDishById(1);
 
         assertNotNull(dish);
-        assertEquals("Salade fraiche",dish.getName());
+        assertEquals("Salade exotique",dish.getName());
         assertEquals(2,dish.getIngredients().size());
 
         assertTrue(
