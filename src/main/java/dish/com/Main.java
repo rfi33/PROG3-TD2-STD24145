@@ -14,13 +14,7 @@ public class Main {
     public static void main(String[] args) {
         Main app = new Main();
 
-        try {
-            app.testFindId();
-            app.testFindIngredient();
-            app.testSaveDish();
-        } catch (SQLException e) {
-            System.err.println("Erreur SQL : " + e.getMessage());
-        }
+        app.testFindId();
     }
 
     public void testFindId() {
@@ -50,7 +44,8 @@ public class Main {
             System.out.println("Aucun plat trouvé avec l'ID 999");
         }
     }
-
+}
+/*
     public void testFindIngredient() {
         List<Ingredient> ingredients = dataRetriever.findIngredient(2, 2);
 
@@ -87,3 +82,4 @@ public class Main {
         System.out.println("Marge brute après mise à jour : " + updatedDish.getGrossMargin());
     }
 }
+*/
