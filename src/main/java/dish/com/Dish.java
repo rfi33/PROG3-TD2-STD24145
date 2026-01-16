@@ -22,7 +22,7 @@ public class Dish {
         double totalPrice = 0;
         for (int i = 0; i < ingredients.size(); i++) {
             Double quantity = ingredients.get(i).getQuantity();
-            if(quantity == null) {
+            if (quantity == null) {
                 throw new RuntimeException("...");
             }
             totalPrice = totalPrice + ingredients.get(i).getPrice() * quantity;

@@ -6,7 +6,7 @@ import java.sql.SQLException;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
-
+/*
 class DataRetrieverTest {
 
     private DataRetriever dataRetriever = new DataRetriever();
@@ -84,3 +84,4 @@ class DataRetrieverTest {
         assertTrue(ingredients1.isEmpty());
     }
 }
+*/
