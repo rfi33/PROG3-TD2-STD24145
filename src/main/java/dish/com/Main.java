@@ -15,36 +15,60 @@ public class Main {
         Main app = new Main();
 
         app.testFindId();
+        app.testGrossMargin();
     }
 
     public void testFindId() {
+
         Dish dish = dataRetriever.findDishById(1);
 
         if (dish != null) {
-            System.out.println("Les ingrédients du plat '" + dish.getName() + "' :");
+            System.out.println("Plat : " + dish.getName());
+
+            System.out.println("Ingrédients :");
             for (Ingredient ingredient : dish.getIngredients()) {
                 System.out.println("- " + ingredient.getName());
             }
 
+            System.out.println("Coût du plat : " + dish.getDishCost());
+
             try {
-                Double margin = dish.getGrossMargin();
-                System.out.println("Marge brute : " + margin);
+                System.out.println("Marge brute : " + dish.getGrossMargin());
             } catch (IllegalStateException e) {
                 System.out.println("Exception getGrossMargin : " + e.getMessage());
             }
         }
 
         Dish dish2 = dataRetriever.findDishById(999);
-        if (dish2 != null && dish2.getIngredients() != null) {
-            System.out.println("Les ingrédients du plat '" + dish2.getName() + "' :");
-            for (Ingredient ingredient : dish2.getIngredients()) {
-                System.out.println("- " + ingredient.getName());
-            }
-        } else {
+        if (dish2 == null) {
             System.out.println("Aucun plat trouvé avec l'ID 999");
         }
     }
+
+    public void testGrossMargin() {
+
+        Dish dishWithPrice = dataRetriever.findDishById(1);
+        try {
+            System.out.println(
+                    dishWithPrice.getName() + " → marge = " + dishWithPrice.getGrossMargin()
+            );
+        } catch (IllegalStateException e) {
+            System.out.println("Erreur : " + e.getMessage());
+        }
+
+        Dish dishWithoutPrice = dataRetriever.findDishById(3);
+        try {
+            System.out.println(
+                    dishWithoutPrice.getName() + " → marge = " + dishWithoutPrice.getGrossMargin()
+            );
+        } catch (IllegalStateException e) {
+            System.out.println(
+                    dishWithoutPrice.getName() + " → Exception attendue : " + e.getMessage()
+            );
+        }
+    }
 }
+
 /*
     public void testFindIngredient() {
         List<Ingredient> ingredients = dataRetriever.findIngredient(2, 2);
