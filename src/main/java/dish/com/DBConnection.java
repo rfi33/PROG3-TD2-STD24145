@@ -1,19 +1,29 @@
 package dish.com;
 
+import io.github.cdimascio.dotenv.Dotenv;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 
 public class DBConnection {
 
-    public Connection getConnection() {
+    private final Dotenv dotenv;
+    private final String URL;
+    private final String USER;
+    private final String PASSWORD;
+
+    public DBConnection() {
+        this.dotenv = Dotenv.load();
+        this.URL = dotenv.get("DB_URL");
+        this.USER = dotenv.get("DB_USER");
+        this.PASSWORD = dotenv.get("DB_PASSWORD");
+    }
+
+    public Connection getDBConnection() {
         try {
-            String jdbcURl = System.getenv("JDBC_URl"); //
-            String user = System.getenv("USER"); //mini_dish_db_manager
-            String password = System.getenv("PASSWORD"); //123456
-            return DriverManager.getConnection("jdbc:postgresql://localhost:5432/mini_dish_db", "postgres", "postgres");
+            return DriverManager.getConnection(URL, USER, PASSWORD);
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Error connection to database", e);
         }
     }
 
@@ -22,7 +32,7 @@ public class DBConnection {
             try {
                 connection.close();
             } catch (SQLException e) {
-                throw new RuntimeException(e);
+                throw new RuntimeException("Error closing connection", e);
             }
         }
     }

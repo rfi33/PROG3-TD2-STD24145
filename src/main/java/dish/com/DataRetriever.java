@@ -10,7 +10,7 @@ import java.util.stream.Collectors;
 public class DataRetriever {
     Dish findDishById(Integer id) {
         DBConnection dbConnection = new DBConnection();
-        Connection connection = dbConnection.getConnection();
+        Connection connection = dbConnection.getDBConnection();
         try {
             PreparedStatement preparedStatement = connection.prepareStatement(
                     """
@@ -39,7 +39,7 @@ public class DataRetriever {
 
     List<Dish> findAllDishes() {
         DBConnection dbConnection = new DBConnection();
-        Connection connection = dbConnection.getConnection();
+        Connection connection = dbConnection.getDBConnection();
         List<Dish> dishes = new ArrayList<>();
         try {
             PreparedStatement preparedStatement = connection.prepareStatement(
@@ -76,7 +76,7 @@ public class DataRetriever {
                     RETURNING id
                 """;
 
-        try (Connection conn = new DBConnection().getConnection()) {
+        try (Connection conn = new DBConnection().getDBConnection()) {
             conn.setAutoCommit(false);
             Integer dishId;
             try (PreparedStatement ps = conn.prepareStatement(upsertDishSql)) {
@@ -109,11 +109,10 @@ public class DataRetriever {
         }
     }
 
-    // ==================== INGREDIENT METHODS ====================
 
     Ingredient findIngredientById(Integer id) {
         DBConnection dbConnection = new DBConnection();
-        Connection connection = dbConnection.getConnection();
+        Connection connection = dbConnection.getDBConnection();
         try {
             PreparedStatement preparedStatement = connection.prepareStatement(
                     """
@@ -142,7 +141,7 @@ public class DataRetriever {
 
     List<Ingredient> findAllIngredients() {
         DBConnection dbConnection = new DBConnection();
-        Connection connection = dbConnection.getConnection();
+        Connection connection = dbConnection.getDBConnection();
         List<Ingredient> ingredients = new ArrayList<>();
         try {
             PreparedStatement preparedStatement = connection.prepareStatement(
@@ -170,7 +169,7 @@ public class DataRetriever {
 
     List<Ingredient> findIngredientsByCategory(CategoryEnum category) {
         DBConnection dbConnection = new DBConnection();
-        Connection connection = dbConnection.getConnection();
+        Connection connection = dbConnection.getDBConnection();
         List<Ingredient> ingredients = new ArrayList<>();
         try {
             PreparedStatement preparedStatement = connection.prepareStatement(
@@ -211,7 +210,7 @@ public class DataRetriever {
                     RETURNING id
                 """;
 
-        try (Connection conn = new DBConnection().getConnection()) {
+        try (Connection conn = new DBConnection().getDBConnection()) {
             conn.setAutoCommit(false);
             Integer ingredientId;
             try (PreparedStatement ps = conn.prepareStatement(upsertIngredientSql)) {
@@ -250,7 +249,7 @@ public class DataRetriever {
         }
         List<Ingredient> savedIngredients = new ArrayList<>();
         DBConnection dbConnection = new DBConnection();
-        Connection conn = dbConnection.getConnection();
+        Connection conn = dbConnection.getDBConnection();
         try {
             conn.setAutoCommit(false);
             String insertSql = """
@@ -345,40 +344,56 @@ public class DataRetriever {
             for (Ingredient ingredient : ingredients) {
                 ps.setInt(1, dishId);
                 ps.setInt(2, ingredient.getId());
-                ps.addBatch(); // Can be substitute ps.executeUpdate() but bad performance
+                ps.addBatch();
             }
             ps.executeBatch();
         }
     }
 
-    private List<Ingredient> findIngredientByDishId(Integer idDish) {
+    private List<Ingredient> findIngredientByDishId(Integer dishId) {
         DBConnection dbConnection = new DBConnection();
-        Connection connection = dbConnection.getConnection();
+        Connection connection = dbConnection.getDBConnection();
         List<Ingredient> ingredients = new ArrayList<>();
+
         try {
             PreparedStatement preparedStatement = connection.prepareStatement(
                     """
-                            select ingredient.id, ingredient.name, ingredient.price, ingredient.category, ingredient.required_quantity
-                            from ingredient where id_dish = ?;
-                            """);
-            preparedStatement.setInt(1, idDish);
+                    SELECT i.id,
+                           i.name,
+                           i.price,
+                           i.category,
+                           di.quantity_required
+                    FROM dish_ingredient di
+                    JOIN ingredient i ON di.id_ingredient = i.id
+                    WHERE di.id_dish = ?
+                    """
+            );
+
+            preparedStatement.setInt(1, dishId);
             ResultSet resultSet = preparedStatement.executeQuery();
+
             while (resultSet.next()) {
                 Ingredient ingredient = new Ingredient();
                 ingredient.setId(resultSet.getInt("id"));
                 ingredient.setName(resultSet.getString("name"));
                 ingredient.setPrice(resultSet.getDouble("price"));
-                ingredient.setCategory(CategoryEnum.valueOf(resultSet.getString("category")));
-                Object requiredQuantity = resultSet.getObject("required_quantity");
-                ingredient.setQuantity(requiredQuantity == null ? null : resultSet.getDouble("required_quantity"));
+                ingredient.setCategory(
+                        CategoryEnum.valueOf(resultSet.getString("category"))
+                );
+
+                Object qty = resultSet.getObject("quantity_required");
+                ingredient.setQuantity(qty == null ? null : resultSet.getDouble("quantity_required"));
+
                 ingredients.add(ingredient);
             }
-            dbConnection.closeConnection(connection);
             return ingredients;
         } catch (SQLException e) {
             throw new RuntimeException(e);
+        } finally {
+            dbConnection.closeConnection(connection);
         }
     }
+
 
 
     private String getSerialSequenceName(Connection conn, String tableName, String columnName)
