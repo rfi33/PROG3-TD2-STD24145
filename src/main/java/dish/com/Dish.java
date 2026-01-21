@@ -1,5 +1,6 @@
 package dish.com;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 
@@ -18,15 +19,18 @@ public class Dish {
         this.price = price;
     }
 
-    public Double getDishCost() {
-        double totalPrice = 0;
-        for (int i = 0; i < ingredients.size(); i++) {
-            Double quantity = ingredients.get(i).getQuantity();
-            if (quantity == null) {
-                throw new RuntimeException("...");
-            }
-            totalPrice = totalPrice + ingredients.get(i).getPrice() * quantity;
+    public Double getDishCostAt(Instant instant) {
+        double totalPrice = 0.0;
+
+        for (Ingredient ingredient : ingredients) {
+
+            double quantity = ingredient
+                    .getStockValueAt(instant)
+                    .getQuantity();
+
+            totalPrice += ingredient.getPrice() * quantity;
         }
+
         return totalPrice;
     }
 
@@ -71,13 +75,6 @@ public class Dish {
     }
 
     public void setIngredients(List<Ingredient> ingredients) {
-        if (ingredients == null) {
-            this.ingredients = null;
-            return;
-        }
-        for (int i = 0; i < ingredients.size(); i++) {
-            ingredients.get(i).setDish(this);
-        }
         this.ingredients = ingredients;
     }
 
@@ -104,10 +101,10 @@ public class Dish {
                 '}';
     }
 
-    public Double getGrossMargin() {
+    public Double getGrossMargin(Instant instant) {
         if (price == null) {
             throw new RuntimeException("Price is null");
         }
-        return price - getDishCost();
+        return price - getDishCostAt(instant);
     }
 }
