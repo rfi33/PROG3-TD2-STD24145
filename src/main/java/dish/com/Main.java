@@ -112,12 +112,11 @@ public class Main {
             try {
                 Dish dish = dataRetriever.findDishById(dishId);
                 Double margin = dish.getGrossMargin();
-                System.out.println(String.format("%-25s %20.2f", dish.getName(), margin));
+                System.out.println(String.format(dish.getName(), margin));
             } catch (RuntimeException e) {
                 try {
                     Dish dish = dataRetriever.findDishById(dishId);
-                    System.out.println(String.format("%-25s %20s",
-                            dish.getName(), "❌ Exception (prix NULL)"));
+                    System.out.println(String.format(dish.getName(), "❌ Exception (prix NULL)"));
                 } catch (RuntimeException ex) {
                     System.out.println(String.format("Plat ID %d %20s",
                             dishId, "❌ Plat non trouvé"));

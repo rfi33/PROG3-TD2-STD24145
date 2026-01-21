@@ -1,7 +1,5 @@
 package dish.com;
 
-import dish.com.Dish;
-
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
