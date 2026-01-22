@@ -5,7 +5,6 @@ import kotlin.Unit;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
-import java.util.Objects;
 
 public class Ingredient {
     private Integer id;
@@ -15,18 +14,19 @@ public class Ingredient {
     private List<StockMovement> stockMovementList;
 
     public StockValue getStockValueAt(Instant instant) {
-
         double quantity = stockMovementList == null
                 ? 0.0
                 : stockMovementList.stream()
                 .filter(m -> !m.getCreationDatetime().isAfter(instant))
-                .mapToDouble(m ->
-                        m.getType() == MovementTypeEnum.IN ? 1.0 : -1.0
-                )
+                .mapToDouble(m -> {
+                    double qty = m.getQuantity();
+                    return m.getType() == MovementTypeEnum.IN ? qty : -qty;
+                })
                 .sum();
 
         return new StockValue(quantity, Unit.INSTANCE);
     }
+
     @Override
     public String toString() {
         return "Ingredient{" +
@@ -73,7 +73,6 @@ public class Ingredient {
         this.id = id;
     }
 
-
     public Integer getId() {
         return id;
     }
@@ -105,5 +104,4 @@ public class Ingredient {
     public void setPrice(Double price) {
         this.price = price;
     }
-
 }

@@ -23,7 +23,6 @@ public class Dish {
         double totalPrice = 0.0;
 
         for (Ingredient ingredient : ingredients) {
-
             double quantity = ingredient
                     .getStockValueAt(instant)
                     .getQuantity();
@@ -34,6 +33,9 @@ public class Dish {
         return totalPrice;
     }
 
+    public Double getDishCost() {
+        return getDishCostAt(Instant.now());
+    }
 
     public Dish() {
     }
@@ -44,7 +46,6 @@ public class Dish {
         this.dishType = dishType;
         this.ingredients = ingredients;
     }
-
 
     public Integer getId() {
         return id;
@@ -106,5 +107,9 @@ public class Dish {
             throw new RuntimeException("Price is null");
         }
         return price - getDishCostAt(instant);
+    }
+
+    public Double getGrossMargin() {
+        return getGrossMargin(Instant.now());
     }
 }

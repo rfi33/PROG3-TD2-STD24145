@@ -1,6 +1,9 @@
 package dish.com;
 
 import java.sql.SQLException;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 
 public class Main {
@@ -21,6 +24,8 @@ public class Main {
         app.testGetDishCost();
 
         app.testGetGrossMarginAllDishes();
+
+        app.testStockValueAt();
 
     }
 
@@ -81,10 +86,6 @@ public class Main {
     }
 
     public void testGetDishCost() {
-        System.out.println("Pour la méthode getDishCost() :");
-        System.out.println(String.format("%-25s %15s", "Plat", "Coût attendu"));
-        System.out.println("-".repeat(45));
-
         for (int dishId = 1; dishId <= 5; dishId++) {
             try {
                 Dish dish = dataRetriever.findDishById(dishId);
@@ -121,6 +122,31 @@ public class Main {
                     System.out.println(String.format("Plat ID %d %20s",
                             dishId, "❌ Plat non trouvé"));
                 }
+            }
+        }
+    }
+
+    public void testStockValueAt() {
+        Instant t = LocalDateTime.of(2024, 1, 6, 12, 0)
+                .toInstant(ZoneOffset.UTC);
+
+        double[] stocksAttendus = {4.8, 3.85, 10.0, 3.0, 2.5};
+
+        for (int i = 1; i <= 5; i++) {
+            try {
+                Ingredient ingredient = dataRetriever.findIngredientById(i);
+                StockValue stockValue = ingredient.getStockValueAt(t);
+                double quantity = stockValue.getQuantity();
+                double expected = stocksAttendus[i - 1];
+
+                System.out.println("Ingredient ID " + i + " : " + ingredient.getName());
+                System.out.println("Stockh : " + quantity + " KG");
+                System.out.println();
+
+            } catch (Exception e) {
+                System.out.println("Ingredient ID " + i + " : ERREUR");
+                System.out.println("Message : " + e.getMessage());
+                System.out.println();
             }
         }
     }
