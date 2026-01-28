@@ -27,6 +27,7 @@ public class Main {
         app.testSaveOrderInsufficientStock();
         app.testFindOrderByReference();
         app.testFindOrderByReferenceNotFound();
+        app.testUnitConversion();
     }
 
     public void testFindId() {
@@ -252,6 +253,33 @@ public class Main {
             } else {
                 System.out.println("✗ Erreur inattendue : " + e.getMessage());
             }
+        }
+    }
+
+    public void testUnitConversion() {
+        System.out.println("\n=== Test UnitConversion ===");
+        String[] ingredients = {"Tomate", "Laitue", "Chocolat", "Poulet", "Beurre"};
+        double[] quantitiesKg = {1.0, 1.0, 2.0, 3.0, 0.5};
+
+        for (int i = 0; i < ingredients.length; i++) {
+            String ing = ingredients[i];
+            double qtyKg = quantitiesKg[i];
+
+            double qtyPcs = UnitConversion.convert(ing, qtyKg, UnitTypeEnum.KG, UnitTypeEnum.PCS);
+            double qtyL = UnitConversion.convert(ing, qtyKg, UnitTypeEnum.KG, UnitTypeEnum.L);
+            double qtyKgFromPcs = UnitConversion.convert(ing, qtyPcs, UnitTypeEnum.PCS, UnitTypeEnum.KG);
+            double qtyKgFromL = UnitConversion.convert(ing, qtyL, UnitTypeEnum.L, UnitTypeEnum.KG);
+
+            System.out.println("Ingrédient : " + ing);
+            System.out.println("  " + qtyKg + " KG -> PCS : " + (qtyPcs != -1 ? qtyPcs : "❌ Conversion impossible"));
+            System.out.println("  " + qtyKg + " KG -> L   : " + (qtyL != -1 ? qtyL : "❌ Conversion impossible"));
+            if (qtyPcs != -1) {
+                System.out.println("  " + qtyPcs + " PCS -> KG : " + qtyKgFromPcs);
+            }
+            if (qtyL != -1) {
+                System.out.println("  " + qtyL + " L   -> KG : " + qtyKgFromL);
+            }
+            System.out.println();
         }
     }
 }
