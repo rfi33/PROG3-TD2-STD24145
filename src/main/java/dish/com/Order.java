@@ -6,32 +6,60 @@ import java.util.Objects;
 
 public class Order {
     private int id;
-    private String references;
-    private Instant creation_Datetime;
+    private String reference;
+    private Double totalAmountHT;
+    private Double totalAmountTTC;
+    private Instant creationDatetime;
     private List<DishOrder> dishOrders;
 
-
-    public Double getTotalAmountWithoutAT(){
-        double total = 0.0;
-        for (for (int i = 0; i < ; i++) {
-            
-        }) {
-            
-        }
-        return total;
+    public Order() {
     }
 
-    public Double getTotalAmountWithAt(){
-        double total = 0.0;
-        return total;
+    public Order(int id, String reference, Instant creationDatetime, List<DishOrder> dishOrders) {
+        this.id = id;
+        this.reference = reference;
+        this.creationDatetime = creationDatetime;
+        this.dishOrders = dishOrders;
+    }
+
+    /**
+     * Calcule le montant total HT de la commande en fonction des plats commandés
+     */
+    public void calculateTotalAmounts() {
+        if (dishOrders == null || dishOrders.isEmpty()) {
+            this.totalAmountHT = 0.0;
+            this.totalAmountTTC = 0.0;
+            return;
+        }
+
+        double totalHT = 0.0;
+        for (DishOrder dishOrder : dishOrders) {
+            if (dishOrder.getDish() != null && dishOrder.getDish().getPrice() != null) {
+                totalHT += dishOrder.getDish().getPrice() * dishOrder.getQuantity();
+            }
+        }
+
+        this.totalAmountHT = totalHT;
+        // TVA à 20%
+        this.totalAmountTTC = totalHT * 1.20;
+    }
+
+    public Double getTotalAmountHT() {
+        return totalAmountHT;
+    }
+
+    public Double getTotalAmountTTC() {
+        return totalAmountTTC;
     }
 
     @Override
     public String toString() {
         return "Order{" +
                 "id=" + id +
-                ", references='" + references + '\'' +
-                ", creation_Datetime=" + creation_Datetime +
+                ", reference='" + reference + '\'' +
+                ", totalAmountHT=" + totalAmountHT +
+                ", totalAmountTTC=" + totalAmountTTC +
+                ", creationDatetime=" + creationDatetime +
                 ", dishOrders=" + dishOrders +
                 '}';
     }
@@ -40,12 +68,17 @@ public class Order {
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;
         Order order = (Order) o;
-        return id == order.id && Objects.equals(references, order.references) && Objects.equals(creation_Datetime, order.creation_Datetime) && Objects.equals(dishOrders, order.dishOrders);
+        return id == order.id &&
+                Objects.equals(reference, order.reference) &&
+                Objects.equals(totalAmountHT, order.totalAmountHT) &&
+                Objects.equals(totalAmountTTC, order.totalAmountTTC) &&
+                Objects.equals(creationDatetime, order.creationDatetime) &&
+                Objects.equals(dishOrders, order.dishOrders);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, references, creation_Datetime, dishOrders);
+        return Objects.hash(id, reference, totalAmountHT, totalAmountTTC, creationDatetime, dishOrders);
     }
 
     public int getId() {
@@ -56,20 +89,28 @@ public class Order {
         this.id = id;
     }
 
-    public String getReferences() {
-        return references;
+    public String getReference() {
+        return reference;
     }
 
-    public void setReferences(String references) {
-        this.references = references;
+    public void setReference(String reference) {
+        this.reference = reference;
     }
 
-    public Instant getCreation_Datetime() {
-        return creation_Datetime;
+    public void setTotalAmountHT(Double totalAmountHT) {
+        this.totalAmountHT = totalAmountHT;
     }
 
-    public void setCreation_Datetime(Instant creation_Datetime) {
-        this.creation_Datetime = creation_Datetime;
+    public void setTotalAmountTTC(Double totalAmountTTC) {
+        this.totalAmountTTC = totalAmountTTC;
+    }
+
+    public Instant getCreationDatetime() {
+        return creationDatetime;
+    }
+
+    public void setCreationDatetime(Instant creationDatetime) {
+        this.creationDatetime = creationDatetime;
     }
 
     public List<DishOrder> getDishOrders() {
@@ -77,13 +118,6 @@ public class Order {
     }
 
     public void setDishOrders(List<DishOrder> dishOrders) {
-        this.dishOrders = dishOrders;
-    }
-
-    public Order(int id, String references, Instant creation_Datetime, List<DishOrder> dishOrders) {
-        this.id = id;
-        this.references = references;
-        this.creation_Datetime = creation_Datetime;
         this.dishOrders = dishOrders;
     }
 }

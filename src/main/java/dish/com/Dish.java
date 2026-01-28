@@ -9,7 +9,17 @@ public class Dish {
     private Double price;
     private String name;
     private DishTypeEnum dishType;
-    private List<Ingredient> ingredients;
+    private List<DishIngredient> dishIngredients;
+
+    public Dish() {
+    }
+
+    public Dish(Integer id, String name, DishTypeEnum dishType, List<DishIngredient> dishIngredients) {
+        this.id = id;
+        this.name = name;
+        this.dishType = dishType;
+        this.dishIngredients = dishIngredients;
+    }
 
     public Double getPrice() {
         return price;
@@ -20,14 +30,19 @@ public class Dish {
     }
 
     public Double getDishCostAt(Instant instant) {
+        if (dishIngredients == null || dishIngredients.isEmpty()) {
+            return 0.0;
+        }
+
         double totalPrice = 0.0;
 
-        for (Ingredient ingredient : ingredients) {
-            double quantity = ingredient
-                    .getStockValueAt(instant)
-                    .getQuantity();
+        for (DishIngredient dishIngredient : dishIngredients) {
+            Ingredient ingredient = dishIngredient.getIngredient();
+            double quantityRequired = dishIngredient.getQuantityRequired();
 
-            totalPrice += ingredient.getPrice() * quantity;
+            if (ingredient != null && ingredient.getPrice() != null) {
+                totalPrice += ingredient.getPrice() * quantityRequired;
+            }
         }
 
         return totalPrice;
@@ -37,14 +52,15 @@ public class Dish {
         return getDishCostAt(Instant.now());
     }
 
-    public Dish() {
+    public Double getGrossMargin(Instant instant) {
+        if (price == null) {
+            throw new RuntimeException("Price is null");
+        }
+        return price - getDishCostAt(instant);
     }
 
-    public Dish(Integer id, String name, DishTypeEnum dishType, List<Ingredient> ingredients) {
-        this.id = id;
-        this.name = name;
-        this.dishType = dishType;
-        this.ingredients = ingredients;
+    public Double getGrossMargin() {
+        return getGrossMargin(Instant.now());
     }
 
     public Integer getId() {
@@ -71,24 +87,27 @@ public class Dish {
         this.dishType = dishType;
     }
 
-    public List<Ingredient> getIngredients() {
-        return ingredients;
+    public List<DishIngredient> getDishIngredients() {
+        return dishIngredients;
     }
 
-    public void setIngredients(List<Ingredient> ingredients) {
-        this.ingredients = ingredients;
+    public void setDishIngredients(List<DishIngredient> dishIngredients) {
+        this.dishIngredients = dishIngredients;
     }
 
     @Override
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;
         Dish dish = (Dish) o;
-        return Objects.equals(id, dish.id) && Objects.equals(name, dish.name) && dishType == dish.dishType && Objects.equals(ingredients, dish.ingredients);
+        return Objects.equals(id, dish.id) &&
+                Objects.equals(name, dish.name) &&
+                dishType == dish.dishType &&
+                Objects.equals(dishIngredients, dish.dishIngredients);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, name, dishType, ingredients);
+        return Objects.hash(id, name, dishType, dishIngredients);
     }
 
     @Override
@@ -98,18 +117,7 @@ public class Dish {
                 ", price=" + price +
                 ", name='" + name + '\'' +
                 ", dishType=" + dishType +
-                ", ingredients=" + ingredients +
+                ", dishIngredients=" + dishIngredients +
                 '}';
-    }
-
-    public Double getGrossMargin(Instant instant) {
-        if (price == null) {
-            throw new RuntimeException("Price is null");
-        }
-        return price - getDishCostAt(instant);
-    }
-
-    public Double getGrossMargin() {
-        return getGrossMargin(Instant.now());
     }
 }

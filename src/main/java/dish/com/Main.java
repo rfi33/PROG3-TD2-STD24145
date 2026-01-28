@@ -36,7 +36,7 @@ public class Main {
             System.out.println("Plat : " + dish.getName());
 
             System.out.println("Ingrédients :");
-            for (Ingredient ingredient : dish.getIngredients()) {
+            for (Ingredient ingredient : dish.getId() ) {
                 System.out.println("- " + ingredient.getName());
             }
 

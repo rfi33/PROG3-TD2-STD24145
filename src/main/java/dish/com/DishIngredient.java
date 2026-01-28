@@ -3,20 +3,30 @@ package dish.com;
 import java.util.Objects;
 
 public class DishIngredient {
-    private int id;
-    private Dish dish;
+    private Integer id;
+    private Integer dishId;
     private Ingredient ingredient;
-    private double quantity_required;
+    private double quantityRequired;
     private UnitTypeEnum unitType;
 
+    public DishIngredient() {
+    }
+
+    public DishIngredient(Integer id, Integer dishId, Ingredient ingredient, double quantityRequired, UnitTypeEnum unitType) {
+        this.id = id;
+        this.dishId = dishId;
+        this.ingredient = ingredient;
+        this.quantityRequired = quantityRequired;
+        this.unitType = unitType;
+    }
 
     @Override
     public String toString() {
         return "DishIngredient{" +
                 "id=" + id +
-                ", dish=" + dish +
+                ", dishId=" + dishId +
                 ", ingredient=" + ingredient +
-                ", quantity_required=" + quantity_required +
+                ", quantityRequired=" + quantityRequired +
                 ", unitType=" + unitType +
                 '}';
     }
@@ -25,28 +35,32 @@ public class DishIngredient {
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;
         DishIngredient that = (DishIngredient) o;
-        return id == that.id && Double.compare(quantity_required, that.quantity_required) == 0 && Objects.equals(dish, that.dish) && Objects.equals(ingredient, that.ingredient) && unitType == that.unitType;
+        return Double.compare(quantityRequired, that.quantityRequired) == 0 &&
+                Objects.equals(id, that.id) &&
+                Objects.equals(dishId, that.dishId) &&
+                Objects.equals(ingredient, that.ingredient) &&
+                unitType == that.unitType;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, dish, ingredient, quantity_required, unitType);
+        return Objects.hash(id, dishId, ingredient, quantityRequired, unitType);
     }
 
-    public int getId() {
+    public Integer getId() {
         return id;
     }
 
-    public void setId(int id) {
+    public void setId(Integer id) {
         this.id = id;
     }
 
-    public Dish getDish() {
-        return dish;
+    public Integer getDishId() {
+        return dishId;
     }
 
-    public void setDish(Dish dish) {
-        this.dish = dish;
+    public void setDishId(Integer dishId) {
+        this.dishId = dishId;
     }
 
     public Ingredient getIngredient() {
@@ -57,12 +71,12 @@ public class DishIngredient {
         this.ingredient = ingredient;
     }
 
-    public double getQuantity_required() {
-        return quantity_required;
+    public double getQuantityRequired() {
+        return quantityRequired;
     }
 
-    public void setQuantity_required(double quantity_required) {
-        this.quantity_required = quantity_required;
+    public void setQuantityRequired(double quantityRequired) {
+        this.quantityRequired = quantityRequired;
     }
 
     public UnitTypeEnum getUnitType() {
@@ -70,14 +84,6 @@ public class DishIngredient {
     }
 
     public void setUnitType(UnitTypeEnum unitType) {
-        this.unitType = unitType;
-    }
-
-    public DishIngredient(int id, Dish dish, Ingredient ingredient, double quantity_required, UnitTypeEnum unitType) {
-        this.id = id;
-        this.dish = dish;
-        this.ingredient = ingredient;
-        this.quantity_required = quantity_required;
         this.unitType = unitType;
     }
 }
