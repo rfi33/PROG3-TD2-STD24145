@@ -150,6 +150,28 @@ public class DataRetriever {
         try (Connection conn = new DBConnection().getDBConnection()) {
             conn.setAutoCommit(false);
 
+            for (DishOrder d : order.getDishOrders()) {
+                for (DishIngredient di : d.getDish().getDishIngredients()) {
+
+                    double convertedQuantity = UnitConversion.convert(
+                            di.getIngredient().getName(),
+                            di.getQuantityRequired(),
+                            di.getUnitType(),
+                            UnitTypeEnum.KG
+                    );
+
+                    if (convertedQuantity == -1) {
+                        throw new RuntimeException(
+                                "Conversion impossible pour l'ingrédient : "
+                                        + di.getIngredient().getName()
+                        );
+                    }
+
+                    di.setQuantityRequired(convertedQuantity);
+                    di.setUnitType(UnitTypeEnum.KG);
+                }
+            }
+
             checkStock(order.getDishOrders());
 
             Integer orderId;
@@ -189,10 +211,10 @@ public class DataRetriever {
             }
 
             saveDishOrders(conn, orderId, order.getDishOrders());
+
             createStockMovementsForOrder(conn, order.getDishOrders());
 
             conn.commit();
-            conn.close();
             return findOrderByReference(reference);
 
         } catch (SQLException e) {
