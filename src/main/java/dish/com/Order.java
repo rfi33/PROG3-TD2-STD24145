@@ -21,15 +21,9 @@ public class Order {
         this.creationDatetime = creationDatetime;
         this.dishOrders = dishOrders;
     }
-
-    /**
-     * Calcule le montant total HT de la commande en fonction des plats commandés
-     */
-    public void calculateTotalAmounts() {
+    public Double getTotalAmountWithoutVAT() {
         if (dishOrders == null || dishOrders.isEmpty()) {
-            this.totalAmountHT = 0.0;
-            this.totalAmountTTC = 0.0;
-            return;
+            return 0.0;
         }
 
         double totalHT = 0.0;
@@ -39,17 +33,12 @@ public class Order {
             }
         }
 
-        this.totalAmountHT = totalHT;
-        // TVA à 20%
-        this.totalAmountTTC = totalHT * 1.20;
+        return totalHT;
     }
 
-    public Double getTotalAmountHT() {
-        return totalAmountHT;
-    }
-
-    public Double getTotalAmountTTC() {
-        return totalAmountTTC;
+    public Double getTotalAmountWithVAT() {
+        double totalHT = getTotalAmountWithoutVAT();
+        return totalHT * 1.20;
     }
 
     @Override

@@ -27,12 +27,12 @@ public class DBConnection {
         }
     }
 
-    public void closeConnection(Connection connection) {
-        if (connection != null) {
+    public void closeConnection(Connection connection){
+        if (connection != null){
             try {
                 connection.close();
-            } catch (SQLException e) {
-                throw new RuntimeException("Error closing connection", e);
+            }catch (SQLException e){
+                throw new RuntimeException("Error closing connection",e);
             }
         }
     }

@@ -28,8 +28,8 @@ public class DataRetriever {
                         rs.getDouble("quantity")
                 ));
             }
+            conn.close();
             return movements;
-
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
@@ -56,8 +56,8 @@ public class DataRetriever {
             dish.setDishType(DishTypeEnum.valueOf(rs.getString("dish_type")));
             dish.setPrice(rs.getObject("selling_price") == null ? null : rs.getDouble("selling_price"));
             dish.setDishIngredients(findDishIngredientsByDishId(id));
+            conn.close();
             return dish;
-
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
@@ -83,47 +83,13 @@ public class DataRetriever {
                 dish.setDishIngredients(findDishIngredientsByDishId(dish.getId()));
                 dishes.add(dish);
             }
+            conn.close();
             return dishes;
-
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
     }
 
-    public Dish saveDish(Dish dish) {
-        try (Connection conn = new DBConnection().getDBConnection()) {
-            conn.setAutoCommit(false);
-
-            Integer dishId;
-            try (PreparedStatement ps = conn.prepareStatement("""
-                INSERT INTO dish (id, name, dish_type, selling_price)
-                VALUES (?, ?, ?::dish_type, ?)
-                ON CONFLICT (id) DO UPDATE
-                SET name = EXCLUDED.name,
-                    dish_type = EXCLUDED.dish_type,
-                    selling_price = EXCLUDED.selling_price
-                RETURNING id
-            """)) {
-
-                ps.setInt(1, dish.getId() != null ? dish.getId() : getNextSerialValue(conn, "dish", "id"));
-                ps.setString(2, dish.getName());
-                ps.setString(3, dish.getDishType().name());
-                if (dish.getPrice() != null) ps.setDouble(4, dish.getPrice());
-                else ps.setNull(4, Types.DOUBLE);
-
-                ResultSet rs = ps.executeQuery();
-                rs.next();
-                dishId = rs.getInt(1);
-            }
-
-            saveDishIngredients(conn, dishId, dish.getDishIngredients());
-            conn.commit();
-            return findDishById(dishId);
-
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
-    }
 
     public Ingredient findIngredientById(Integer id) {
         try (Connection conn = new DBConnection().getDBConnection();
@@ -172,6 +138,7 @@ public class DataRetriever {
                 ingredient.setCategory(CategoryEnum.valueOf(rs.getString("category")));
                 ingredients.add(ingredient);
             }
+            conn.close();
             return ingredients;
 
         } catch (SQLException e) {
@@ -185,16 +152,14 @@ public class DataRetriever {
 
             checkStock(order.getDishOrders());
 
-            order.calculateTotalAmounts();
-
             Integer orderId;
             String reference;
 
             try (PreparedStatement ps = conn.prepareStatement("""
-                INSERT INTO "order"(id, reference, total_amount_ht, total_amount_ttc, creation_datetime)
-                VALUES (?, ?, ?, ?, ?)
-                RETURNING id, reference
-            """)) {
+            INSERT INTO "order"(id, reference, total_amount_ht, total_amount_ttc, creation_datetime)
+            VALUES (?, ?, ?, ?, ?)
+            RETURNING id, reference
+        """)) {
 
                 ps.setInt(
                         1,
@@ -202,12 +167,19 @@ public class DataRetriever {
                                 ? order.getId()
                                 : getNextSerialValue(conn, "order", "id")
                 );
-                if (order.getReference() != null) ps.setString(2, order.getReference());
-                else ps.setNull(2, Types.VARCHAR);
-                ps.setDouble(3, order.getTotalAmountHT());
-                ps.setDouble(4, order.getTotalAmountTTC());
+
+                if (order.getReference() != null)
+                    ps.setString(2, order.getReference());
+                else
+                    ps.setNull(2, Types.VARCHAR);
+
+                ps.setDouble(3, order.getTotalAmountWithoutVAT());
+                ps.setDouble(4, order.getTotalAmountWithVAT());
+
                 ps.setTimestamp(5, Timestamp.from(
-                        order.getCreationDatetime() != null ? order.getCreationDatetime() : Instant.now()
+                        order.getCreationDatetime() != null
+                                ? order.getCreationDatetime()
+                                : Instant.now()
                 ));
 
                 ResultSet rs = ps.executeQuery();
@@ -220,6 +192,7 @@ public class DataRetriever {
             createStockMovementsForOrder(conn, order.getDishOrders());
 
             conn.commit();
+            conn.close();
             return findOrderByReference(reference);
 
         } catch (SQLException e) {
@@ -249,6 +222,7 @@ public class DataRetriever {
             order.setTotalAmountTTC(rs.getDouble("total_amount_ttc"));
             order.setCreationDatetime(rs.getTimestamp("creation_datetime").toInstant());
             order.setDishOrders(findDishOrdersByOrderId(order.getId()));
+            conn.close();
             return order;
 
         } catch (SQLException e) {
