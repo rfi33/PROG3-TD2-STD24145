@@ -90,7 +90,6 @@ public class DataRetriever {
         }
     }
 
-
     public Ingredient findIngredientById(Integer id) {
         try (Connection conn = new DBConnection().getDBConnection();
              PreparedStatement ps = conn.prepareStatement("""
@@ -146,10 +145,79 @@ public class DataRetriever {
         }
     }
 
+    // Nouvelle méthode pour trouver une table par son ID
+    public RestaurantTable findRestaurantTableById(Integer id) {
+        try (Connection conn = new DBConnection().getDBConnection();
+             PreparedStatement ps = conn.prepareStatement("""
+                SELECT id, table_number
+                FROM restaurant_table
+                WHERE id = ?
+             """)) {
+
+            ps.setInt(1, id);
+            ResultSet rs = ps.executeQuery();
+
+            if (!rs.next()) {
+                throw new RuntimeException("Restaurant table not found: " + id);
+            }
+
+            RestaurantTable table = new RestaurantTable();
+            table.setId(rs.getInt("id"));
+            table.setTableNumber(rs.getInt("table_number"));
+            return table;
+
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    // Nouvelle méthode pour vérifier la disponibilité d'une table
+    public boolean isTableAvailable(Integer tableId, Instant checkTime) {
+        try (Connection conn = new DBConnection().getDBConnection();
+             PreparedStatement ps = conn.prepareStatement("""
+                SELECT COUNT(*) as occupied_count
+                FROM "order"
+                WHERE id_table = ?
+                  AND arrival_datetime <= ?
+                  AND (departure_datetime IS NULL OR departure_datetime > ?)
+             """)) {
+
+            ps.setInt(1, tableId);
+            ps.setTimestamp(2, Timestamp.from(checkTime));
+            ps.setTimestamp(3, Timestamp.from(checkTime));
+
+            ResultSet rs = ps.executeQuery();
+            rs.next();
+
+            return rs.getInt("occupied_count") == 0;
+
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public Order saveOrder(Order order) {
         try (Connection conn = new DBConnection().getDBConnection()) {
             conn.setAutoCommit(false);
 
+            // Vérifier que la table est spécifiée
+            if (order.getRestaurantTable() == null || order.getRestaurantTable().getId() == null) {
+                throw new RuntimeException("Une table doit être spécifiée pour la commande");
+            }
+
+            // Vérifier que la table existe
+            RestaurantTable table = findRestaurantTableById(order.getRestaurantTable().getId());
+
+            // Vérifier la disponibilité de la table
+            Instant arrivalTime = order.getArrivalDatetime() != null
+                    ? order.getArrivalDatetime()
+                    : Instant.now();
+
+            if (!isTableAvailable(table.getId(), arrivalTime)) {
+                throw new RuntimeException("La table " + table.getTableNumber() + " n'est pas disponible");
+            }
+
+            // Conversion des unités
             for (DishOrder d : order.getDishOrders()) {
                 for (DishIngredient di : d.getDish().getDishIngredients()) {
 
@@ -178,10 +246,11 @@ public class DataRetriever {
             String reference;
 
             try (PreparedStatement ps = conn.prepareStatement("""
-            INSERT INTO "order"(id, reference, total_amount_ht, total_amount_ttc, creation_datetime)
-            VALUES (?, ?, ?, ?, ?)
-            RETURNING id, reference
-        """)) {
+                INSERT INTO "order"(id, reference, total_amount_ht, total_amount_ttc, 
+                                    creation_datetime, id_table, arrival_datetime, departure_datetime)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                RETURNING id, reference
+            """)) {
 
                 ps.setInt(
                         1,
@@ -204,6 +273,15 @@ public class DataRetriever {
                                 : Instant.now()
                 ));
 
+                ps.setInt(6, table.getId());
+
+                ps.setTimestamp(7, Timestamp.from(arrivalTime));
+
+                if (order.getDepartureDatetime() != null)
+                    ps.setTimestamp(8, Timestamp.from(order.getDepartureDatetime()));
+                else
+                    ps.setNull(8, Types.TIMESTAMP);
+
                 ResultSet rs = ps.executeQuery();
                 rs.next();
                 orderId = rs.getInt("id");
@@ -225,9 +303,12 @@ public class DataRetriever {
     public Order findOrderByReference(String reference) {
         try (Connection conn = new DBConnection().getDBConnection();
              PreparedStatement ps = conn.prepareStatement("""
-                SELECT id, reference, total_amount_ht, total_amount_ttc, creation_datetime
-                FROM "order"
-                WHERE reference = ?
+                SELECT o.id, o.reference, o.total_amount_ht, o.total_amount_ttc, 
+                       o.creation_datetime, o.id_table, o.arrival_datetime, o.departure_datetime,
+                       t.table_number
+                FROM "order" o
+                JOIN restaurant_table t ON o.id_table = t.id
+                WHERE o.reference = ?
              """)) {
 
             ps.setString(1, reference);
@@ -243,6 +324,19 @@ public class DataRetriever {
             order.setTotalAmountHT(rs.getDouble("total_amount_ht"));
             order.setTotalAmountTTC(rs.getDouble("total_amount_ttc"));
             order.setCreationDatetime(rs.getTimestamp("creation_datetime").toInstant());
+
+            RestaurantTable table = new RestaurantTable();
+            table.setId(rs.getInt("id_table"));
+            table.setTableNumber(rs.getInt("table_number"));
+            order.setRestaurantTable(table);
+
+            order.setArrivalDatetime(rs.getTimestamp("arrival_datetime").toInstant());
+
+            Timestamp departureTs = rs.getTimestamp("departure_datetime");
+            if (departureTs != null) {
+                order.setDepartureDatetime(departureTs.toInstant());
+            }
+
             order.setDishOrders(findDishOrdersByOrderId(order.getId()));
             conn.close();
             return order;
