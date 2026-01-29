@@ -19,6 +19,7 @@ public class TestTableManagement {
         test.testSaveOrderWithUnavailableTable();
         test.testSaveOrderWithoutTable();
         test.testFindOrderWithTableInfo();
+        test.testUnavailableTableWithAvailableTables();
     }
 
     public void testSaveOrderWithAvailableTable() {
@@ -33,7 +34,6 @@ public class TestTableManagement {
             order.setArrivalDatetime(Instant.now());
 
             List<DishOrder> dishOrders = new ArrayList<>();
-
             DishOrder dishOrder1 = new DishOrder();
             dishOrder1.setDish(dataRetriever.findDishById(1));
             dishOrder1.setQuantity(1);
@@ -46,8 +46,6 @@ public class TestTableManagement {
             System.out.println("✓ Commande créée avec succès");
             System.out.println("Référence : " + savedOrder.getReference());
             System.out.println("Table : " + savedOrder.getRestaurantTable().getTableNumber());
-            System.out.println("Heure d'arrivée : " + savedOrder.getArrivalDatetime());
-            System.out.println("Montant TTC : " + savedOrder.getTotalAmountWithVAT() + " Ar");
 
         } catch (RuntimeException e) {
             System.out.println("✗ Erreur : " + e.getMessage());
@@ -77,7 +75,7 @@ public class TestTableManagement {
 
             Order order2 = new Order();
             order2.setCreationDatetime(Instant.now());
-            order2.setRestaurantTable(table); // Même table
+            order2.setRestaurantTable(table);
             order2.setArrivalDatetime(Instant.now());
 
             List<DishOrder> dishOrders2 = new ArrayList<>();
@@ -89,7 +87,7 @@ public class TestTableManagement {
 
             dataRetriever.saveOrder(order2);
 
-            System.out.println("✗ Erreur : La commande aurait dû échouer (table occupée)");
+            System.out.println("✗ Erreur : La commande aurait dû échouer");
 
         } catch (RuntimeException e) {
             if (e.getMessage().contains("n'est pas disponible")) {
@@ -106,7 +104,6 @@ public class TestTableManagement {
         try {
             Order order = new Order();
             order.setCreationDatetime(Instant.now());
-            // Pas de table spécifiée
 
             List<DishOrder> dishOrders = new ArrayList<>();
             DishOrder dishOrder = new DishOrder();
@@ -117,7 +114,7 @@ public class TestTableManagement {
 
             dataRetriever.saveOrder(order);
 
-            System.out.println("✗ Erreur : La commande aurait dû échouer (pas de table)");
+            System.out.println("✗ Erreur : La commande aurait dû échouer");
 
         } catch (RuntimeException e) {
             if (e.getMessage().contains("table doit être spécifiée")) {
@@ -130,7 +127,7 @@ public class TestTableManagement {
     }
 
     public void testFindOrderWithTableInfo() {
-        System.out.println("\n=== Test findOrderByReference() - Avec informations de table ===");
+        System.out.println("\n=== Test findOrderByReference() ===");
         try {
             Order order = new Order();
             order.setCreationDatetime(Instant.now());
@@ -148,20 +145,55 @@ public class TestTableManagement {
             order.setDishOrders(dishOrders);
 
             Order savedOrder = dataRetriever.saveOrder(order);
-            String reference = savedOrder.getReference();
-
-            Order foundOrder = dataRetriever.findOrderByReference(reference);
+            Order foundOrder = dataRetriever.findOrderByReference(savedOrder.getReference());
 
             System.out.println("✓ Commande trouvée");
-            System.out.println("Référence : " + foundOrder.getReference());
-            System.out.println("Table numéro : " + foundOrder.getRestaurantTable().getTableNumber());
-            System.out.println("Heure d'arrivée : " + foundOrder.getArrivalDatetime());
-            System.out.println("Heure de départ : " +
-                    (foundOrder.getDepartureDatetime() != null ? foundOrder.getDepartureDatetime() : "Non définie"));
-            System.out.println("Montant TTC : " + foundOrder.getTotalAmountWithVAT() + " Ar");
+            System.out.println("Table : " + foundOrder.getRestaurantTable().getTableNumber());
 
         } catch (RuntimeException e) {
             System.out.println("✗ Erreur : " + e.getMessage());
+        }
+    }
+
+    // ✅ NOUVEAU TEST : table occupée MAIS autres tables disponibles
+    public void testUnavailableTableWithAvailableTables() {
+        System.out.println("\n=== Test table occupée + tables disponibles ===");
+        try {
+            Order first = new Order();
+            first.setCreationDatetime(Instant.now());
+
+            RestaurantTable table = new RestaurantTable();
+            table.setId(4);
+            first.setRestaurantTable(table);
+            first.setArrivalDatetime(Instant.now());
+
+            List<DishOrder> list1 = new ArrayList<>();
+            DishOrder d1 = new DishOrder();
+            d1.setDish(dataRetriever.findDishById(1));
+            d1.setQuantity(1);
+            list1.add(d1);
+            first.setDishOrders(list1);
+
+            dataRetriever.saveOrder(first);
+            System.out.println("✓ Table 4 occupée");
+
+            Order second = new Order();
+            second.setCreationDatetime(Instant.now());
+            second.setRestaurantTable(table);
+            second.setArrivalDatetime(Instant.now());
+            second.setDishOrders(list1);
+
+            dataRetriever.saveOrder(second);
+
+            System.out.println("✗ Erreur : la commande aurait dû échouer");
+
+        } catch (RuntimeException e) {
+            if (e.getMessage().contains("Tables disponibles")) {
+                System.out.println("✓ Message avec tables disponibles OK");
+                System.out.println("Message : " + e.getMessage());
+            } else {
+                System.out.println("✗ Message incorrect : " + e.getMessage());
+            }
         }
     }
 }
