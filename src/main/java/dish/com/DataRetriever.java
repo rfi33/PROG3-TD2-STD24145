@@ -230,21 +230,27 @@ public class DataRetriever {
                     ? order.getArrivalDatetime()
                     : Instant.now();
 
-            if (!isTableAvailable(table.getId(), arrivalTime)) {
-                List<RestaurantTable> available = findAvailableTables(arrivalTime);
+            order.setArrivalDatetime(arrivalTime);
 
-                if (available.isEmpty()) {
-                    throw new RuntimeException("Aucune table n'est actuellement disponible");
+            if (!isTableAvailable(table.getId(), arrivalTime)) {
+
+                List<RestaurantTable> availableTables = findAvailableTables(arrivalTime);
+
+                if (availableTables.isEmpty()) {
+                    throw new RuntimeException(
+                            "La table " + table.getTableNumber()
+                                    + " n'est pas disponible. Aucune autre table n'est actuellement disponible"
+                    );
                 }
 
-                String tables = available.stream()
+                String available = availableTables.stream()
                         .map(t -> String.valueOf(t.getTableNumber()))
                         .reduce((a, b) -> a + ", " + b)
                         .orElse("");
 
                 throw new RuntimeException(
                         "La table " + table.getTableNumber()
-                                + " n'est pas disponible. Tables disponibles : " + tables
+                                + " n'est pas disponible. Tables disponibles : " + available
                 );
             }
 
@@ -256,9 +262,14 @@ public class DataRetriever {
                             di.getUnitType(),
                             UnitTypeEnum.KG
                     );
+
                     if (converted == -1) {
-                        throw new RuntimeException("Conversion impossible pour l'ingrédient : " + di.getIngredient().getName());
+                        throw new RuntimeException(
+                                "Conversion impossible pour l'ingrédient : "
+                                        + di.getIngredient().getName()
+                        );
                     }
+
                     di.setQuantityRequired(converted);
                     di.setUnitType(UnitTypeEnum.KG);
                 }
@@ -270,20 +281,43 @@ public class DataRetriever {
             String reference;
 
             try (PreparedStatement ps = conn.prepareStatement("""
-                INSERT INTO "order"(id, reference, total_amount_ht, total_amount_ttc,
-                                    creation_datetime, id_table, arrival_datetime, departure_datetime)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                RETURNING id, reference
-            """)) {
+            INSERT INTO "order" (
+                id,
+                reference,
+                total_amount_ht,
+                total_amount_ttc,
+                creation_datetime,
+                id_table,
+                arrival_datetime,
+                departure_datetime
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            RETURNING id, reference
+        """)) {
 
-                ps.setInt(1, order.getId() > 0 ? order.getId() : getNextSerialValue(conn, "order", "id"));
+                ps.setInt(1,
+                        order.getId() > 0
+                                ? order.getId()
+                                : getNextSerialValue(conn, "order", "id")
+                );
+
                 ps.setString(2, order.getReference());
                 ps.setDouble(3, order.getTotalAmountWithoutVAT());
                 ps.setDouble(4, order.getTotalAmountWithVAT());
-                ps.setTimestamp(5, Timestamp.from(order.getCreationDatetime() != null ? order.getCreationDatetime() : Instant.now()));
+
+                ps.setTimestamp(5, Timestamp.from(
+                        order.getCreationDatetime() != null
+                                ? order.getCreationDatetime()
+                                : Instant.now()
+                ));
+
                 ps.setInt(6, table.getId());
                 ps.setTimestamp(7, Timestamp.from(arrivalTime));
-                ps.setTimestamp(8, order.getDepartureDatetime() != null ? Timestamp.from(order.getDepartureDatetime()) : null);
+                ps.setTimestamp(8,
+                        order.getDepartureDatetime() != null
+                                ? Timestamp.from(order.getDepartureDatetime())
+                                : null
+                );
 
                 ResultSet rs = ps.executeQuery();
                 rs.next();
@@ -296,10 +330,12 @@ public class DataRetriever {
 
             conn.commit();
             return findOrderByReference(reference);
+
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
     }
+
 
     public Order findOrderByReference(String reference) {
         try (Connection conn = new DBConnection().getDBConnection();
