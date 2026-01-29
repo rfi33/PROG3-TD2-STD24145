@@ -27,9 +27,8 @@ public class TestTableManagement {
             Order order = new Order();
             order.setCreationDatetime(Instant.now());
 
-            // Spécifier la table
             RestaurantTable table = new RestaurantTable();
-            table.setId(1); // Table numéro 1
+            table.setId(1);
             order.setRestaurantTable(table);
             order.setArrivalDatetime(Instant.now());
 
@@ -58,7 +57,6 @@ public class TestTableManagement {
     public void testSaveOrderWithUnavailableTable() {
         System.out.println("\n=== Test saveOrder() - Table non disponible ===");
         try {
-            // Créer une première commande pour occuper une table
             Order order1 = new Order();
             order1.setCreationDatetime(Instant.now());
 
@@ -77,7 +75,6 @@ public class TestTableManagement {
             dataRetriever.saveOrder(order1);
             System.out.println("✓ Première commande créée (table 2 occupée)");
 
-            // Tenter de créer une deuxième commande sur la même table
             Order order2 = new Order();
             order2.setCreationDatetime(Instant.now());
             order2.setRestaurantTable(table); // Même table
@@ -135,7 +132,6 @@ public class TestTableManagement {
     public void testFindOrderWithTableInfo() {
         System.out.println("\n=== Test findOrderByReference() - Avec informations de table ===");
         try {
-            // Créer une commande
             Order order = new Order();
             order.setCreationDatetime(Instant.now());
 
@@ -154,7 +150,6 @@ public class TestTableManagement {
             Order savedOrder = dataRetriever.saveOrder(order);
             String reference = savedOrder.getReference();
 
-            // Récupérer la commande
             Order foundOrder = dataRetriever.findOrderByReference(reference);
 
             System.out.println("✓ Commande trouvée");

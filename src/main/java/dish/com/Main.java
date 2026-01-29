@@ -16,16 +16,11 @@ public class Main {
 
     public static void main(String[] args) {
         Main app = new Main();
-
-        // =====================================================
-        // Exécution de tous les tests
-        // =====================================================
         app.testFindId();
         app.testGrossMargin();
         app.testGetDishCost();
         app.testGetGrossMarginAllDishes();
         app.testStockValueAt();
-
         app.testSaveOrderSuccess();
         app.testSaveOrderInsufficientStock();
         app.testFindOrderByReference();
@@ -33,10 +28,6 @@ public class Main {
         app.testUnitConversion();
         app.testStockConversionAndExpectedStock();
     }
-
-    // =====================================================
-    // TESTS DETAILLES
-    // =====================================================
 
     public void testFindId() {
         Dish dish = dataRetriever.findDishById(1);
