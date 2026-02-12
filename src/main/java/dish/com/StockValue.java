@@ -28,7 +28,7 @@ public class StockValue {
         return Objects.hash(quantity, unit);
     }
 
-    public StockValue(double quantity, Unit unit) {
+    public StockValue(double quantity, UnitTypeEnum unit) {
         this.quantity = quantity;
         this.unit = unit;
     }

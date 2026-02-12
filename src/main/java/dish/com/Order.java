@@ -12,10 +12,6 @@ public class Order {
     private Instant creationDatetime;
     private List<DishOrder> dishOrders;
 
-    private RestaurantTable restaurantTable;
-    private Instant arrivalDatetime;
-    private Instant departureDatetime;
-
     public Order() {
     }
 
@@ -25,7 +21,6 @@ public class Order {
         this.creationDatetime = creationDatetime;
         this.dishOrders = dishOrders;
     }
-
     public Double getTotalAmountWithoutVAT() {
         if (dishOrders == null || dishOrders.isEmpty()) {
             return 0.0;
@@ -54,9 +49,6 @@ public class Order {
                 ", totalAmountHT=" + totalAmountHT +
                 ", totalAmountTTC=" + totalAmountTTC +
                 ", creationDatetime=" + creationDatetime +
-                ", restaurantTable=" + restaurantTable +
-                ", arrivalDatetime=" + arrivalDatetime +
-                ", departureDatetime=" + departureDatetime +
                 ", dishOrders=" + dishOrders +
                 '}';
     }
@@ -70,19 +62,14 @@ public class Order {
                 Objects.equals(totalAmountHT, order.totalAmountHT) &&
                 Objects.equals(totalAmountTTC, order.totalAmountTTC) &&
                 Objects.equals(creationDatetime, order.creationDatetime) &&
-                Objects.equals(restaurantTable, order.restaurantTable) &&
-                Objects.equals(arrivalDatetime, order.arrivalDatetime) &&
-                Objects.equals(departureDatetime, order.departureDatetime) &&
                 Objects.equals(dishOrders, order.dishOrders);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, reference, totalAmountHT, totalAmountTTC, creationDatetime,
-                restaurantTable, arrivalDatetime, departureDatetime, dishOrders);
+        return Objects.hash(id, reference, totalAmountHT, totalAmountTTC, creationDatetime, dishOrders);
     }
 
-    // Getters et Setters existants
     public int getId() {
         return id;
     }
@@ -121,30 +108,5 @@ public class Order {
 
     public void setDishOrders(List<DishOrder> dishOrders) {
         this.dishOrders = dishOrders;
-    }
-
-    // Nouveaux Getters et Setters
-    public RestaurantTable getRestaurantTable() {
-        return restaurantTable;
-    }
-
-    public void setRestaurantTable(RestaurantTable restaurantTable) {
-        this.restaurantTable = restaurantTable;
-    }
-
-    public Instant getArrivalDatetime() {
-        return arrivalDatetime;
-    }
-
-    public void setArrivalDatetime(Instant arrivalDatetime) {
-        this.arrivalDatetime = arrivalDatetime;
-    }
-
-    public Instant getDepartureDatetime() {
-        return departureDatetime;
-    }
-
-    public void setDepartureDatetime(Instant departureDatetime) {
-        this.departureDatetime = departureDatetime;
     }
 }
