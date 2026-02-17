@@ -6,7 +6,7 @@ import java.util.Objects;
 
 public class StockValue {
     private double quantity;
-    private Unit unit;
+    private UnitTypeEnum unit;
 
     @Override
     public String toString() {
@@ -28,7 +28,7 @@ public class StockValue {
         return Objects.hash(quantity, unit);
     }
 
-    public StockValue(double quantity, UnitTypeEnum unit) {
+    public StockValue(double quantity, Unit unit) {
         this.quantity = quantity;
         this.unit = unit;
     }
@@ -37,7 +37,7 @@ public class StockValue {
         this.quantity = quantity;
     }
 
-    public void setUnit(Unit unit) {
+    public void setUnit(UnitTypeEnum unit) {
         this.unit = unit;
     }
 
@@ -45,7 +45,7 @@ public class StockValue {
         return quantity;
     }
 
-    public Unit getUnit() {
+    public UnitTypeEnum getUnit() {
         return unit;
     }
 }
