@@ -10,9 +10,6 @@ public class Order {
     private Double totalAmountHT;
     private Double totalAmountTTC;
     private Instant creationDatetime;
-    private Instant arrivalDatetime;
-    private Instant departureDatetime;
-    private RestaurantTable restaurantTable;
     private List<DishOrder> dishOrders;
 
     public Order() {
@@ -24,7 +21,6 @@ public class Order {
         this.creationDatetime = creationDatetime;
         this.dishOrders = dishOrders;
     }
-
     public Double getTotalAmountWithoutVAT() {
         if (dishOrders == null || dishOrders.isEmpty()) {
             return 0.0;
@@ -36,14 +32,43 @@ public class Order {
                 totalHT += dishOrder.getDish().getPrice() * dishOrder.getQuantity();
             }
         }
+
         return totalHT;
     }
 
     public Double getTotalAmountWithVAT() {
-        return getTotalAmountWithoutVAT() * 1.20;
+        double totalHT = getTotalAmountWithoutVAT();
+        return totalHT * 1.20;
     }
 
-    // ---- Getters / Setters ----
+    @Override
+    public String toString() {
+        return "Order{" +
+                "id=" + id +
+                ", reference='" + reference + '\'' +
+                ", totalAmountHT=" + totalAmountHT +
+                ", totalAmountTTC=" + totalAmountTTC +
+                ", creationDatetime=" + creationDatetime +
+                ", dishOrders=" + dishOrders +
+                '}';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        Order order = (Order) o;
+        return id == order.id &&
+                Objects.equals(reference, order.reference) &&
+                Objects.equals(totalAmountHT, order.totalAmountHT) &&
+                Objects.equals(totalAmountTTC, order.totalAmountTTC) &&
+                Objects.equals(creationDatetime, order.creationDatetime) &&
+                Objects.equals(dishOrders, order.dishOrders);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id, reference, totalAmountHT, totalAmountTTC, creationDatetime, dishOrders);
+    }
 
     public int getId() {
         return id;
@@ -77,72 +102,11 @@ public class Order {
         this.creationDatetime = creationDatetime;
     }
 
-    public Instant getArrivalDatetime() {
-        return arrivalDatetime;
-    }
-
-    public void setArrivalDatetime(Instant arrivalDatetime) {
-        this.arrivalDatetime = arrivalDatetime;
-    }
-
-    public Instant getDepartureDatetime() {
-        return departureDatetime;
-    }
-
-    public void setDepartureDatetime(Instant departureDatetime) {
-        this.departureDatetime = departureDatetime;
-    }
-
-    public RestaurantTable getRestaurantTable() {
-        return restaurantTable;
-    }
-
-    public void setRestaurantTable(RestaurantTable restaurantTable) {
-        this.restaurantTable = restaurantTable;
-    }
-
     public List<DishOrder> getDishOrders() {
         return dishOrders;
     }
 
     public void setDishOrders(List<DishOrder> dishOrders) {
         this.dishOrders = dishOrders;
-    }
-
-    @Override
-    public String toString() {
-        return "Order{" +
-                "id=" + id +
-                ", reference='" + reference + '\'' +
-                ", totalAmountHT=" + totalAmountHT +
-                ", totalAmountTTC=" + totalAmountTTC +
-                ", creationDatetime=" + creationDatetime +
-                ", arrivalDatetime=" + arrivalDatetime +
-                ", departureDatetime=" + departureDatetime +
-                ", restaurantTable=" + restaurantTable +
-                ", dishOrders=" + dishOrders +
-                '}';
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (o == null || getClass() != o.getClass()) return false;
-        Order order = (Order) o;
-        return id == order.id &&
-                Objects.equals(reference, order.reference) &&
-                Objects.equals(totalAmountHT, order.totalAmountHT) &&
-                Objects.equals(totalAmountTTC, order.totalAmountTTC) &&
-                Objects.equals(creationDatetime, order.creationDatetime) &&
-                Objects.equals(arrivalDatetime, order.arrivalDatetime) &&
-                Objects.equals(departureDatetime, order.departureDatetime) &&
-                Objects.equals(restaurantTable, order.restaurantTable) &&
-                Objects.equals(dishOrders, order.dishOrders);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(id, reference, totalAmountHT, totalAmountTTC,
-                creationDatetime, arrivalDatetime, departureDatetime,
-                restaurantTable, dishOrders);
     }
 }
