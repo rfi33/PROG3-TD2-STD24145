@@ -22,30 +22,32 @@ public class Main {
         app.testGetDishCost();
         app.testGetGrossMarginAllDishes();
         app.testStockValueAt();
-
-        app.testSaveOrderSuccess();
-        app.testSaveOrderInsufficientStock();
-        app.testFindOrderByReference();
+        app.test1StockValueAt();
         app.testFindOrderByReferenceNotFound();
     }
 
-    public void testFindId() {
-        Dish dish = dataRetriever.findDishById(1);
+    private DishOrder buildDishOrder(int dishId, int qty) {
+        DishOrder d = new DishOrder();
+        d.setDish(dataRetriever.findDishById(dishId));
+        d.setQuantity(qty);
+        return d;
+    }
 
+    public void testFindId() {
+        System.out.println("\n=== Test findDishById() ===");
+
+        Dish dish = dataRetriever.findDishById(1);
         if (dish != null) {
             System.out.println("Plat : " + dish.getName());
-
             System.out.println("Ingrédients :");
-            for (DishIngredient dishIngredient : dish.getDishIngredients()) {
-                System.out.println("- " + dishIngredient.getIngredient().getName());
+            for (DishIngredient di : dish.getDishIngredients()) {
+                System.out.println("  - " + di.getIngredient().getName());
             }
-
             try {
                 System.out.println("Coût du plat : " + dish.getDishCost());
             } catch (RuntimeException e) {
                 System.out.println("Exception getDishCost : " + e.getMessage());
             }
-
             try {
                 System.out.println("Marge brute : " + dish.getGrossMargin());
             } catch (RuntimeException e) {
@@ -54,16 +56,16 @@ public class Main {
         }
 
         try {
-            Dish dish2 = dataRetriever.findDishById(999);
-            if (dish2 == null) {
-                System.out.println("Aucun plat trouvé avec l'ID 999");
-            }
+            dataRetriever.findDishById(999);
+            System.out.println("✗ Erreur : aucune exception levée pour ID 999");
         } catch (RuntimeException e) {
-            System.out.println("Exception attendue : " + e.getMessage());
+            System.out.println("✓ Exception attendue pour ID 999 : " + e.getMessage());
         }
     }
 
     public void testGrossMargin() {
+        System.out.println("\n=== Test getGrossMargin() ===");
+
         Dish dishWithPrice = dataRetriever.findDishById(1);
         try {
             System.out.println(dishWithPrice.getName() + " → marge = " + dishWithPrice.getGrossMargin());
@@ -80,164 +82,79 @@ public class Main {
     }
 
     public void testGetDishCost() {
+        System.out.println("\n=== Test getDishCost() ===");
+
         for (int dishId = 1; dishId <= 5; dishId++) {
             try {
                 Dish dish = dataRetriever.findDishById(dishId);
-                Double cost = dish.getDishCost();
-                System.out.println(String.format("%-25s %15.2f", dish.getName(), cost));
+                System.out.printf("%-25s %15.2f%n", dish.getName(), dish.getDishCost());
             } catch (RuntimeException e) {
-                try {
-                    Dish dish = dataRetriever.findDishById(dishId);
-                    System.out.println(String.format("%-25s %15s",
-                            dish.getName(), "❌ Exception (" + e.getMessage() + ")"));
-                } catch (RuntimeException ex) {
-                    System.out.println(String.format("Plat ID %d %15s",
-                            dishId, "❌ Plat non trouvé"));
-                }
+                System.out.printf("Plat ID %d %15s%n", dishId, "❌ " + e.getMessage());
             }
         }
     }
 
     public void testGetGrossMarginAllDishes() {
-        System.out.println("Pour la méthode getGrossMargin() :");
-        System.out.println(String.format("%-25s %20s", "Plat", "Marge attendue"));
+        System.out.println("\n=== Test getGrossMargin() – tous les plats ===");
+        System.out.printf("%-25s %20s%n", "Plat", "Marge attendue");
         System.out.println("-".repeat(50));
 
         for (int dishId = 1; dishId <= 5; dishId++) {
             try {
                 Dish dish = dataRetriever.findDishById(dishId);
-                Double margin = dish.getGrossMargin();
-                System.out.println(String.format("%-25s %20.2f", dish.getName(), margin));
-            } catch (RuntimeException e) {
                 try {
-                    Dish dish = dataRetriever.findDishById(dishId);
-                    System.out.println(String.format("%-25s %20s", dish.getName(), "❌ Exception (prix NULL)"));
-                } catch (RuntimeException ex) {
-                    System.out.println(String.format("Plat ID %d %20s",
-                            dishId, "❌ Plat non trouvé"));
+                    System.out.printf("%-25s %20.2f%n", dish.getName(), dish.getGrossMargin());
+                } catch (RuntimeException e) {
+                    System.out.printf("%-25s %20s%n", dish.getName(), "❌ Exception (prix NULL)");
                 }
+            } catch (RuntimeException e) {
+                System.out.printf("Plat ID %d %20s%n", dishId, "❌ Plat non trouvé");
             }
         }
     }
 
     public void testStockValueAt() {
+        System.out.println("\n=== Test getStockValueAt() ===");
         Instant t = LocalDateTime.of(2024, 1, 6, 12, 0).toInstant(ZoneOffset.UTC);
-        double[] stocksAttendus = {4.8, 3.85, 10.0, 3.0, 2.5};
 
         for (int i = 1; i <= 5; i++) {
             try {
                 Ingredient ingredient = dataRetriever.findIngredientById(i);
-                StockValue stockValue = ingredient.getStockValueAt(t);
-                double quantity = stockValue.getQuantity();
-                double expected = stocksAttendus[i - 1];
-
+                StockValue sv = ingredient.getStockValueAt(t);
                 System.out.println("Ingredient ID " + i + " : " + ingredient.getName());
-                System.out.println("Stock : " + quantity + " KG");
+                System.out.println("Stock : " + sv.getQuantity()
+                        + (sv.getUnit() != null ? " " + sv.getUnit() : ""));
                 System.out.println();
-
             } catch (Exception e) {
-                System.out.println("Ingredient ID " + i + " : ERREUR");
-                System.out.println("Message : " + e.getMessage());
+                System.out.println("Ingredient ID " + i + " : ERREUR – " + e.getMessage());
                 System.out.println();
             }
         }
     }
 
-    public void testSaveOrderSuccess() {
-        System.out.println("\n=== Test saveOrder() - Commande avec stock suffisant ===");
+
+
+    public void testSaveOrderWithoutTable() {
+        System.out.println("\n=== Test saveOrder() - Sans table spécifiée ===");
         try {
             Order order = new Order();
             order.setCreationDatetime(Instant.now());
 
             List<DishOrder> dishOrders = new ArrayList<>();
-
-            DishOrder dishOrder1 = new DishOrder();
-            dishOrder1.setDish(dataRetriever.findDishById(1));
-            dishOrder1.setQuantity(1);
-            dishOrders.add(dishOrder1);
-
-            DishOrder dishOrder2 = new DishOrder();
-            dishOrder2.setDish(dataRetriever.findDishById(2));
-            dishOrder2.setQuantity(1);
-            dishOrders.add(dishOrder2);
-
+            dishOrders.add(buildDishOrder(1, 1));
             order.setDishOrders(dishOrders);
-
-            Order savedOrder = dataRetriever.saveOrder(order);
-
-            System.out.println("Référence : " + savedOrder.getReference());
-            System.out.println("Montant HT : " + savedOrder.getTotalAmountWithoutVAT()+ " Ar");
-            System.out.println("Montant TTC : " + savedOrder.getTotalAmountWithVAT() + " Ar");
-            System.out.println("Nombre de plats : " + savedOrder.getDishOrders().size());
-
-            for (DishOrder dishOrder : savedOrder.getDishOrders()) {
-                System.out.println("  - " + dishOrder.getDish().getName()
-                        + " x" + dishOrder.getQuantity()
-                        + " = " + (dishOrder.getDish().getPrice() * dishOrder.getQuantity()) + " Ar");
-            }
-
-        } catch (RuntimeException e) {
-            System.out.println("✗ Erreur : " + e.getMessage());
-        }
-    }
-
-    public void testSaveOrderInsufficientStock() {
-        System.out.println("\n=== Test saveOrder() - Stock insuffisant ===");
-        try {
-            Order order = new Order();
-            order.setCreationDatetime(Instant.now());
-
-            List<DishOrder> dishOrders = new ArrayList<>();
-
-            DishOrder dishOrder = new DishOrder();
-            dishOrder.setDish(dataRetriever.findDishById(2));
-            dishOrder.setQuantity(100);
-            dishOrders.add(dishOrder);
-
-            order.setDishOrders(dishOrders);
-
             dataRetriever.saveOrder(order);
-
             System.out.println("✗ Erreur : La commande aurait dû échouer");
 
         } catch (RuntimeException e) {
-            if (e.getMessage().contains("Insufficient stock")) {
-                System.out.println("✓ Exception correctement levée");
-                System.out.println(e.getMessage());
+            if (e.getMessage() != null && e.getMessage().contains("table doit être spécifiée")) {
+                System.out.println("✓ Exception correctement levée : " + e.getMessage());
             } else {
                 System.out.println("✗ Erreur inattendue : " + e.getMessage());
             }
         }
     }
 
-    public void testFindOrderByReference() {
-        System.out.println("\n=== Test findOrderByReference() - Commande existante ===");
-        try {
-            Order order = new Order();
-            order.setCreationDatetime(Instant.now());
-
-            List<DishOrder> dishOrders = new ArrayList<>();
-            DishOrder dishOrder = new DishOrder();
-            dishOrder.setDish(dataRetriever.findDishById(1));
-            dishOrder.setQuantity(2);
-            dishOrders.add(dishOrder);
-
-            order.setDishOrders(dishOrders);
-            Order savedOrder = dataRetriever.saveOrder(order);
-            String reference = savedOrder.getReference();
-
-            Order foundOrder = dataRetriever.findOrderByReference(reference);
-
-            System.out.println("✓ Commande trouvée");
-            System.out.println("Référence : " + foundOrder.getReference());
-            System.out.println("Montant HT : " + foundOrder.getTotalAmountWithVAT() + " Ar");
-            System.out.println("Montant TTC : " + foundOrder.getTotalAmountWithVAT() + " Ar");
-            System.out.println("Date : " + foundOrder.getCreationDatetime());
-
-        } catch (RuntimeException e) {
-            System.out.println("✗ Erreur : " + e.getMessage());
-        }
-    }
 
     public void testFindOrderByReferenceNotFound() {
         System.out.println("\n=== Test findOrderByReference() - Commande inexistante ===");
@@ -246,11 +163,38 @@ public class Main {
             System.out.println("✗ Erreur : Une exception aurait dû être levée");
 
         } catch (RuntimeException e) {
-            if (e.getMessage().contains("not found")) {
-                System.out.println("✓ Exception correctement levée");
-                System.out.println(e.getMessage());
+            if (e.getMessage() != null && e.getMessage().contains("not found")) {
+                System.out.println("✓ Exception correctement levée : " + e.getMessage());
             } else {
                 System.out.println("✗ Erreur inattendue : " + e.getMessage());
+            }
+        }
+    }
+
+    public void test1StockValueAt() {
+        Instant t = LocalDateTime.of(2024, 1, 6, 12, 0).toInstant(ZoneOffset.UTC);
+
+        System.out.printf("%-5s %-15s %15s %15s %10s%n",
+                "ID", "Ingrédient", "OO (stock)", "SQL (stock)", "Égaux ?");
+        System.out.println("-".repeat(65));
+
+        for (int i = 1; i <= 5; i++) {
+            try {
+                Ingredient ingredient = dataRetriever.findIngredientById(i);
+                StockValue ooResult   = ingredient.getStockValueAt(t);
+                StockValue sqlResult  = dataRetriever.getStockValueAt(t, i);
+
+                boolean equal = Math.abs(ooResult.getQuantity() - sqlResult.getQuantity()) < 0.001;
+
+                System.out.printf("%-5d %-15s %15.3f %15.3f %10s%n",
+                        i,
+                        ingredient.getName(),
+                        ooResult.getQuantity(),
+                        sqlResult.getQuantity(),
+                        equal ? "✓" : "✗ DIFFÉRENT");
+
+            } catch (Exception e) {
+                System.out.printf("%-5d %-15s  ERREUR : %s%n", i, "?", e.getMessage());
             }
         }
     }

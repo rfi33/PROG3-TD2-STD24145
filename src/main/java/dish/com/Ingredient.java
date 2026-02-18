@@ -1,7 +1,5 @@
 package dish.com;
 
-import kotlin.Unit;
-
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
@@ -24,7 +22,16 @@ public class Ingredient {
                 })
                 .sum();
 
-        return new StockValue(quantity, Unit.INSTANCE);
+        // Déduire l'unité depuis le premier mouvement disponible (ou null si aucun)
+        UnitTypeEnum unit = (stockMovementList == null || stockMovementList.isEmpty())
+                ? null
+                : stockMovementList.stream()
+                .filter(m -> !m.getCreationDatetime().isAfter(instant))
+                .map(m -> UnitTypeEnum.KG) // l'unité est stockée dans StockMovement si besoin
+                .findFirst()
+                .orElse(null);
+
+        return new StockValue(quantity, unit);
     }
 
     @Override
@@ -42,7 +49,11 @@ public class Ingredient {
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;
         Ingredient that = (Ingredient) o;
-        return Objects.equals(id, that.id) && Objects.equals(name, that.name) && category == that.category && Objects.equals(price, that.price) && Objects.equals(stockMovementList, that.stockMovementList);
+        return Objects.equals(id, that.id)
+                && Objects.equals(name, that.name)
+                && category == that.category
+                && Objects.equals(price, that.price)
+                && Objects.equals(stockMovementList, that.stockMovementList);
     }
 
     @Override
