@@ -2,9 +2,15 @@ package dish.com;
 
 import java.sql.*;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.*;
 
 public class DataRetriever {
+
+    // =========================================================================
+    // MÉTHODES EXISTANTES (inchangées)
+    // =========================================================================
 
     public List<StockMovement> findStockMovementsByIngredientId(Integer ingredientId) {
         List<StockMovement> movements = new ArrayList<>();
@@ -28,7 +34,6 @@ public class DataRetriever {
                         rs.getDouble("quantity")
                 ));
             }
-            conn.close();
             return movements;
         } catch (SQLException e) {
             throw new RuntimeException(e);
@@ -56,7 +61,6 @@ public class DataRetriever {
             dish.setDishType(DishTypeEnum.valueOf(rs.getString("dish_type")));
             dish.setPrice(rs.getObject("selling_price") == null ? null : rs.getDouble("selling_price"));
             dish.setDishIngredients(findDishIngredientsByDishId(id));
-            conn.close();
             return dish;
         } catch (SQLException e) {
             throw new RuntimeException(e);
@@ -83,13 +87,11 @@ public class DataRetriever {
                 dish.setDishIngredients(findDishIngredientsByDishId(dish.getId()));
                 dishes.add(dish);
             }
-            conn.close();
             return dishes;
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
     }
-
 
     public Ingredient findIngredientById(Integer id) {
         try (Connection conn = new DBConnection().getDBConnection();
@@ -138,7 +140,6 @@ public class DataRetriever {
                 ingredient.setCategory(CategoryEnum.valueOf(rs.getString("category")));
                 ingredients.add(ingredient);
             }
-            conn.close();
             return ingredients;
 
         } catch (SQLException e) {
@@ -152,7 +153,6 @@ public class DataRetriever {
 
             for (DishOrder d : order.getDishOrders()) {
                 for (DishIngredient di : d.getDish().getDishIngredients()) {
-
                     double convertedQuantity = UnitConversion.convert(
                             di.getIngredient().getName(),
                             di.getQuantityRequired(),
@@ -162,8 +162,7 @@ public class DataRetriever {
 
                     if (convertedQuantity == -1) {
                         throw new RuntimeException(
-                                "Conversion impossible pour l'ingrédient : "
-                                        + di.getIngredient().getName()
+                                "Conversion impossible pour l'ingrédient : " + di.getIngredient().getName()
                         );
                     }
 
@@ -178,17 +177,11 @@ public class DataRetriever {
             String reference;
 
             try (PreparedStatement ps = conn.prepareStatement("""
-            INSERT INTO "order"(id, reference, total_amount_ht, total_amount_ttc, creation_datetime)
-            VALUES (?, ?, ?, ?, ?)
-            RETURNING id, reference
-        """)) {
-
-                ps.setInt(
-                        1,
-                        order.getId() > 0
-                                ? order.getId()
-                                : getNextSerialValue(conn, "order", "id")
-                );
+                INSERT INTO "order"(id, reference, total_amount_ht, total_amount_ttc, creation_datetime)
+                VALUES (?, ?, ?, ?, ?)
+                RETURNING id, reference
+            """)) {
+                ps.setInt(1, order.getId() > 0 ? order.getId() : getNextSerialValue(conn, "order", "id"));
 
                 if (order.getReference() != null)
                     ps.setString(2, order.getReference());
@@ -197,11 +190,8 @@ public class DataRetriever {
 
                 ps.setDouble(3, order.getTotalAmountWithoutVAT());
                 ps.setDouble(4, order.getTotalAmountWithVAT());
-
                 ps.setTimestamp(5, Timestamp.from(
-                        order.getCreationDatetime() != null
-                                ? order.getCreationDatetime()
-                                : Instant.now()
+                        order.getCreationDatetime() != null ? order.getCreationDatetime() : Instant.now()
                 ));
 
                 ResultSet rs = ps.executeQuery();
@@ -211,9 +201,7 @@ public class DataRetriever {
             }
 
             saveDishOrders(conn, orderId, order.getDishOrders());
-
             createStockMovementsForOrder(conn, order.getDishOrders());
-
             conn.commit();
             return findOrderByReference(reference);
 
@@ -244,13 +232,314 @@ public class DataRetriever {
             order.setTotalAmountTTC(rs.getDouble("total_amount_ttc"));
             order.setCreationDatetime(rs.getTimestamp("creation_datetime").toInstant());
             order.setDishOrders(findDishOrdersByOrderId(order.getId()));
-            conn.close();
             return order;
 
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
     }
+
+    // =========================================================================
+    // TD5 - QUESTION 1 : Push-down processing pour l'état de stock
+    // =========================================================================
+
+    /**
+     * Calcule l'état de stock d'un ingrédient à un instant donné
+     * directement au niveau de la base de données (push-down processing).
+     *
+     * La requête SQL :
+     *  - filtre les mouvements <= t (clause WHERE)
+     *  - applique CASE WHEN type='OUT' THEN -quantity ELSE quantity END
+     *  - fait la SUM() par ingrédient (GROUP BY id_ingredient)
+     *  - retourne l'unité et la quantité nette calculée
+     */
+    public StockValue getStockValueAt(Instant t, Integer ingredientId) {
+        String sql = """
+            SELECT
+                sm.unit,
+                COALESCE(
+                    SUM(
+                        CASE
+                            WHEN sm.type = 'OUT' THEN -sm.quantity
+                            ELSE sm.quantity
+                        END
+                    ),
+                    0
+                ) AS actual_quantity
+            FROM stock_movement sm
+            WHERE sm.id_ingredient = ?
+              AND sm.creation_datetime <= ?
+            GROUP BY sm.id_ingredient, sm.unit
+        """;
+
+        try (Connection conn = new DBConnection().getDBConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setInt(1, ingredientId);
+            ps.setTimestamp(2, Timestamp.from(t));
+
+            ResultSet rs = ps.executeQuery();
+
+            if (rs.next()) {
+                double quantity = rs.getDouble("actual_quantity");
+                UnitTypeEnum unit = UnitTypeEnum.valueOf(rs.getString("unit"));
+                return new StockValue(quantity, unit);
+            }
+
+            // Aucun mouvement avant cet instant → stock = 0
+            return new StockValue(0.0, null);
+
+        } catch (SQLException e) {
+            throw new RuntimeException("Erreur getStockValueAt (push-down)", e);
+        }
+    }
+
+    // =========================================================================
+    // TD5 - QUESTION 2a : Coût d'un plat (push-down)
+    // =========================================================================
+
+    /**
+     * Calcule le coût total des ingrédients d'un plat directement en SQL :
+     *   SUM(ingredient.price * dish_ingredient.quantity_required)
+     */
+    public Double getDishCost(Integer dishId) {
+        String sql = """
+            SELECT
+                COALESCE(
+                    SUM(i.price * di.quantity_required),
+                    0.0
+                ) AS dish_cost
+            FROM dish_ingredient di
+            JOIN ingredient i ON di.id_ingredient = i.id
+            WHERE di.id_dish = ?
+        """;
+
+        try (Connection conn = new DBConnection().getDBConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setInt(1, dishId);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getDouble("dish_cost");
+                }
+            }
+
+        } catch (SQLException e) {
+            throw new RuntimeException("Erreur getDishCost", e);
+        }
+
+        return 0.0;
+    }
+
+    // =========================================================================
+    // TD5 - QUESTION 2b : Marge brute d'un plat (push-down)
+    // =========================================================================
+
+    /**
+     * Calcule la marge brute = selling_price - SUM(ingredient.price * quantity_required)
+     * directement en SQL.
+     */
+    public Double getGrossMargin(Integer dishId) {
+        String sql = """
+            SELECT
+                d.selling_price,
+                COALESCE(
+                    SUM(i.price * di.quantity_required),
+                    0.0
+                ) AS dish_cost
+            FROM dish d
+            LEFT JOIN dish_ingredient di ON di.id_dish = d.id
+            LEFT JOIN ingredient i       ON di.id_ingredient = i.id
+            WHERE d.id = ?
+            GROUP BY d.id, d.selling_price
+        """;
+
+        try (Connection conn = new DBConnection().getDBConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setInt(1, dishId);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    throw new RuntimeException("Dish not found: " + dishId);
+                }
+
+                Object sellingPrice = rs.getObject("selling_price");
+                if (sellingPrice == null) {
+                    throw new RuntimeException(
+                            "Le prix de vente du plat " + dishId + " est NULL – marge impossible.");
+                }
+
+                double price = rs.getDouble("selling_price");
+                double cost  = rs.getDouble("dish_cost");
+                return price - cost;
+            }
+
+        } catch (SQLException e) {
+            throw new RuntimeException("Erreur getGrossMargin", e);
+        }
+    }
+
+    // =========================================================================
+    // TD5 - QUESTION 3 : Statistiques de stock par période (push-down)
+    // =========================================================================
+
+    /**
+     * Enum pour la périodicité supportée.
+     */
+    public enum Periodicity {
+        DAY, WEEK, MONTH
+    }
+
+    /**
+     * Retourne l'évolution de l'état de stock pour TOUS les ingrédients,
+     * par période (DAY / WEEK / MONTH), dans un intervalle de dates donné.
+     *
+     * Structure du résultat :
+     *   Map<String ingredientName, Map<String periode, Double stockCumulé>>
+     *
+     * La clé de la période est formatée selon la périodicité :
+     *   DAY   → "2026-01-01"
+     *   WEEK  → "2026-W01"
+     *   MONTH → "2026-01"
+     *
+     * L'état de stock retourné est CUMULATIF : c'est la somme de TOUS les
+     * mouvements depuis le début jusqu'à la fin de chaque période.
+     *
+     * @param periodicity  DAY, WEEK ou MONTH
+     * @param intervalMin  début de l'intervalle (inclus)
+     * @param intervalMax  fin de l'intervalle (inclus)
+     */
+    public Map<String, Map<String, Double>> getStockStatsByPeriod(
+            Periodicity periodicity,
+            LocalDate intervalMin,
+            LocalDate intervalMax
+    ) {
+        // Choisit le format de troncature PostgreSQL selon la périodicité
+        String truncUnit = switch (periodicity) {
+            case DAY   -> "day";
+            case WEEK  -> "week";
+            case MONTH -> "month";
+        };
+
+        /*
+         * On construit la requête dynamiquement car DATE_TRUNC n'accepte pas
+         * de paramètre PreparedStatement pour l'unité de troncature.
+         *
+         * La sous-requête "grouped" calcule le stock net PAR période (delta).
+         * La fenêtre SUM(...) OVER (...) calcule ensuite le cumul.
+         */
+        String sql = String.format(
+                "SELECT" +
+                        "    ingredient_id," +
+                        "    ingredient_name," +
+                        "    period_start," +
+                        "    SUM(period_delta) OVER (" +
+                        "        PARTITION BY ingredient_id" +
+                        "        ORDER BY period_start" +
+                        "    ) AS cumulative_stock" +
+                        " FROM (" +
+                        "    SELECT" +
+                        "        i.id                                         AS ingredient_id," +
+                        "        i.name                                       AS ingredient_name," +
+                        "        DATE_TRUNC('%s', sm.creation_datetime)::date AS period_start," +
+                        "        SUM(" +
+                        "            CASE" +
+                        "                WHEN sm.type = 'OUT' THEN -sm.quantity" +
+                        "                ELSE sm.quantity" +
+                        "            END" +
+                        "        ) AS period_delta" +
+                        "    FROM stock_movement sm" +
+                        "    JOIN ingredient i ON sm.id_ingredient = i.id" +
+                        "    WHERE sm.creation_datetime >= ?" +
+                        "      AND sm.creation_datetime < ?" +
+                        "    GROUP BY i.id, i.name, DATE_TRUNC('%s', sm.creation_datetime)" +
+                        " ) grouped" +
+                        " ORDER BY ingredient_id, period_start",
+                truncUnit, truncUnit
+        );
+
+        // intervalMax inclus → on avance d'un jour pour le filtre strict <
+        Instant from = intervalMin.atStartOfDay(ZoneOffset.UTC).toInstant();
+        Instant to   = intervalMax.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
+
+        Map<String, Map<String, Double>> result = new LinkedHashMap<>();
+
+        try (Connection conn = new DBConnection().getDBConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setTimestamp(1, Timestamp.from(from));
+            ps.setTimestamp(2, Timestamp.from(to));
+
+            ResultSet rs = ps.executeQuery();
+
+            while (rs.next()) {
+                String ingredientName = rs.getString("ingredient_name");
+                String periodKey      = rs.getDate("period_start").toString();
+                double stock          = rs.getDouble("cumulative_stock");
+
+                result
+                        .computeIfAbsent(ingredientName, k -> new LinkedHashMap<>())
+                        .put(periodKey, stock);
+            }
+
+        } catch (SQLException e) {
+            throw new RuntimeException("Erreur getStockStatsByPeriod", e);
+        }
+
+        return result;
+    }
+
+    /**
+     * Affiche les statistiques de stock sous forme de tableau dans la console.
+     * Colonnes : Ingrédient | période1 | période2 | ...
+     */
+    public void printStockStatsByPeriod(
+            Periodicity periodicity,
+            LocalDate intervalMin,
+            LocalDate intervalMax
+    ) {
+        Map<String, Map<String, Double>> stats =
+                getStockStatsByPeriod(periodicity, intervalMin, intervalMax);
+
+        if (stats.isEmpty()) {
+            System.out.println("Aucune donnée pour la période sélectionnée.");
+            return;
+        }
+
+        // Collecte toutes les périodes (colonnes) dans l'ordre
+        Set<String> allPeriods = new LinkedHashSet<>();
+        for (Map<String, Double> periodMap : stats.values()) {
+            allPeriods.addAll(periodMap.keySet());
+        }
+
+        // En-tête
+        StringBuilder header = new StringBuilder(String.format("%-20s", "Ingrédient"));
+        for (String period : allPeriods) {
+            header.append(String.format(" | %12s", period));
+        }
+        System.out.println(header);
+        System.out.println("-".repeat(header.length()));
+
+        // Lignes
+        for (Map.Entry<String, Map<String, Double>> entry : stats.entrySet()) {
+            StringBuilder row = new StringBuilder(String.format("%-20s", entry.getKey()));
+            for (String period : allPeriods) {
+                Double val = entry.getValue().get(period);
+                if (val != null) {
+                    row.append(String.format(" | %12.2f", val));
+                } else {
+                    row.append(String.format(" | %12s", "N/A"));
+                }
+            }
+            System.out.println(row);
+        }
+    }
+
+    // =========================================================================
+    // MÉTHODES PRIVÉES (inchangées)
+    // =========================================================================
 
     private void checkStock(List<DishOrder> dishOrders) {
         Map<Integer, Double> required = new HashMap<>();
@@ -344,14 +633,8 @@ public class DataRetriever {
             INSERT INTO dish_order(id, id_order, id_dish, quantity)
             VALUES (?, ?, ?, ?)
         """)) {
-
             for (DishOrder d : dishOrders) {
-                ps.setInt(
-                        1,
-                        d.getId() > 0
-                                ? d.getId()
-                                : getNextSerialValue(conn, "dish_order", "id")
-                );
+                ps.setInt(1, d.getId() > 0 ? d.getId() : getNextSerialValue(conn, "dish_order", "id"));
                 ps.setInt(2, orderId);
                 ps.setInt(3, d.getDish().getId());
                 ps.setInt(4, d.getQuantity());
@@ -378,39 +661,12 @@ public class DataRetriever {
             INSERT INTO stock_movement(id, id_ingredient, quantity, type, unit, creation_datetime)
             VALUES (?, ?, ?, 'OUT'::movement_type, 'KG'::unit_type, ?)
         """)) {
-
             Instant now = Instant.now();
             for (Map.Entry<Integer, Double> e : used.entrySet()) {
                 ps.setInt(1, getNextSerialValue(conn, "stock_movement", "id"));
                 ps.setInt(2, e.getKey());
                 ps.setDouble(3, e.getValue());
                 ps.setTimestamp(4, Timestamp.from(now));
-                ps.addBatch();
-            }
-            ps.executeBatch();
-        }
-    }
-
-    private void saveDishIngredients(Connection conn, Integer dishId, List<DishIngredient> list) throws SQLException {
-        try (PreparedStatement ps = conn.prepareStatement(
-                "DELETE FROM dish_ingredient WHERE id_dish = ?")) {
-            ps.setInt(1, dishId);
-            ps.executeUpdate();
-        }
-
-        if (list == null) return;
-
-        try (PreparedStatement ps = conn.prepareStatement("""
-            INSERT INTO dish_ingredient(id, id_dish, id_ingredient, quantity_required, unit)
-            VALUES (?, ?, ?, ?, ?::unit_type)
-        """)) {
-
-            for (DishIngredient di : list) {
-                ps.setInt(1, di.getId() != null ? di.getId() : getNextSerialValue(conn, "dish_ingredient", "id"));
-                ps.setInt(2, dishId);
-                ps.setInt(3, di.getIngredient().getId());
-                ps.setDouble(4, di.getQuantityRequired());
-                ps.setString(5, di.getUnitType().name());
                 ps.addBatch();
             }
             ps.executeBatch();
@@ -433,80 +689,6 @@ public class DataRetriever {
             ResultSet rs = ps.executeQuery();
             rs.next();
             return rs.getInt(1);
-        }
-    }
-
-
-    public Double getDishCost(Integer dishId) {
-
-        String sql = """
-        SELECT
-            COALESCE(
-                SUM(i.price * di.quantity_required),
-                0.0
-            ) AS dish_cost
-        FROM dish_ingredient di
-        JOIN ingredient i ON di.id_ingredient = i.id
-        WHERE di.id_dish = ?
-        """;
-
-        try (Connection conn = new DBConnection().getDBConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            ps.setInt(1, dishId);
-
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getDouble("dish_cost");
-                }
-            }
-
-        } catch (SQLException e) {
-            throw new RuntimeException("Erreur getDishCost", e);
-        }
-
-        return 0.0;
-    }
-
-    public Double getGrossMargin(Integer dishId) {
-
-        String sql = """
-        SELECT
-            d.selling_price,
-            COALESCE(
-                SUM(i.price * di.quantity_required),
-                0.0
-            ) AS dish_cost
-        FROM dish d
-        LEFT JOIN dish_ingredient di ON di.id_dish = d.id
-        LEFT JOIN ingredient i       ON di.id_ingredient = i.id
-        WHERE d.id = ?
-        GROUP BY d.id, d.selling_price
-        """;
-
-        try (Connection conn = new DBConnection().getDBConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            ps.setInt(1, dishId);
-
-            try (ResultSet rs = ps.executeQuery()) {
-                if (!rs.next()) {
-                    throw new RuntimeException("Dish not found: " + dishId);
-                }
-
-                Object sellingPrice = rs.getObject("selling_price");
-                if (sellingPrice == null) {
-                    throw new RuntimeException(
-                            "Le prix de vente du plat " + dishId + " est NULL – marge impossible.");
-                }
-
-                double price = rs.getDouble("selling_price");
-                double cost  = rs.getDouble("dish_cost");
-                return price - cost;
-            }
-
-        } catch (SQLException e) {
-            throw new RuntimeException("Erreur getGrossMargin", e);
         }
     }
 }
